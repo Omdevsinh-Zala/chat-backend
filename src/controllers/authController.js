@@ -1,31 +1,17 @@
-import { compare } from "bcrypt";
 import jwt from "jsonwebtoken";
-import { User } from "../models/User.js";
 import logger from "../config/logger.js";
-import { createUserKeys } from "../utils/keyGenerator.js";
+import * as LoginService from "../services/authService.js";
 import { generateToken } from "../services/tokenService.js";
 import { response } from "../services/response.js";
 import { sequelize } from "../models/index.js";
-import { Setting } from "../models/settings.js";
 import { config } from "../config/app.js";
 
 export const registerUser = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const user = await User.create({
-            first_name: req.body.firstName,
-            last_name: req.body.lastName,
-            email: req.body.email,
-            password: req.body.password,
-            public_key: createUserKeys().publicKey
-        }, { transaction: t });
-
-        await Setting.create({
-            user_id: user.toJSON().id
-        }, { transaction: t })
+        const { privateKey } = await LoginService.registerUser(req.body, t);
 
         await t.commit();
-        const privateKey = createUserKeys().privateKey;
         const resp = response(true, { privateKey }, "User registered successfully.")
         return res.status(201).json(resp);
     } catch(err) {
@@ -44,43 +30,19 @@ export const registerUser = async (req, res) => {
 
 export const loginUser = async(req, res) => {
     try {
-        const user = await User.findOne({
-            where: {
-                email: req.body.email,
-            }
-        });
-        if(!user) {
-            const resp = response(false, null, "Invalid credentials.");
-            return res.status(401).json(resp);
-        }
-
-        const isCorrectPassword = await compare(req.body.password, user.toJSON().password);
-        if(!isCorrectPassword) {
-            const resp = response(false, null, "Invalid credentials.");
-            return res.status(401).json(resp);
-        }
-
-        const accessToken = generateToken({ id: user.toJSON().id, email: user.toJSON().email }, 'access');
-        const refreshToken = generateToken({ id: user.toJSON().id, email: user.toJSON().email }, 'refresh');
-
-        const userData = {
-            firstName: user.toJSON().first_name,
-            lastName: user.toJSON().last_name,
-            fullName: user.toJSON().full_name,
-            email: user.toJSON().email,
-        }
+        const { userData, accessToken, refreshToken } =  await LoginService.loginUser(req.body, res);
 
         const resp = response(true, userData, "Login successful.");
         return res.status(200).cookie('access_token', accessToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'None',
+            secure: false,
+            sameSite: 'lax',
             maxAge: 3600000
         })
         .cookie('refresh_token', refreshToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'None',
+            secure: false,
+            sameSite: 'lax',
             maxAge: 24 * 3600000
         }).json(resp)
     } catch(err) {
@@ -109,4 +71,10 @@ export const refreshToken = (req, res) => {
 
         return res.json({ message: "Access token refreshed" });
     });
+}
+
+export const logoutUser = async (req, res) => {
+    await LoginService.logoutUser(res);
+    const resp = response(true, null, "Logout successful.");
+    return res.status(200).json(resp);
 }

@@ -25,6 +25,12 @@ module.exports = {
         type: Sequelize.ENUM,
         values: ["public", "private"]
       },
+      admin_ids: {
+        type: Sequelize.ARRAY(Sequelize.UUID),
+        allowNull: true,
+        defaultValue: [],
+        comment: 'List of user IDs with admin rights for this channel'
+      },
       status: {
         type: Sequelize.ENUM,
         values: ["active", "archived"]

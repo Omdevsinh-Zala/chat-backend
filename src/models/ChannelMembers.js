@@ -22,6 +22,9 @@ export const ChannelMember = sequelize.define("ChannelMember", {
   role: {
     type: DataTypes.ENUM,
     values: ["member", "admin", "owner"],
+    allowNull: false,
+    defaultValue: "member",
+    comment: 'Role of the user in the channel'
   },
   is_muted: {
     type: DataTypes.BOOLEAN,

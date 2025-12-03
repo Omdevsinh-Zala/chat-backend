@@ -23,6 +23,12 @@ export const Channel = sequelize.define("Channel", {
     type: DataTypes.ENUM,
     values: ["public", "private"],
   },
+  admin_ids: {
+    type: DataTypes.ARRAY(DataTypes.UUID),
+    allowNull: true,
+    defaultValue: [],
+    comment: 'List of user IDs with admin rights for this channel'
+  },
   status: {
     type: DataTypes.ENUM,
     values: ["active", "archived"],

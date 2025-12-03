@@ -8,7 +8,12 @@
     "start": "pm2 start src/app.js",
     "dev": "eslint . && pm2 start src/server.js --watch --ext js --name chat-backend",
     "log": "pm2 logs",
-    "stop": "pm2 kill"
+    "stop": "pm2 kill",
+    "create": "npx sequelize-cli db:create",
+    "migrate": "npx sequelize-cli db:migrate",
+    "undo": "npx sequelize-cli db:migrate:undo",
+    "undo:all": "npx sequelize-cli db:migrate:undo:all",
+    "drop": "npx sequelize-cli db:drop"
   },
   "repository": {
     "type": "git",

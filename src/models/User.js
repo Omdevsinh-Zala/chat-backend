@@ -1,12 +1,6 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "./index.js";
 import { genSalt, hash } from "bcrypt";
-import { Message } from "./messages.js";
-import { Notification } from "./notifications.js";
-import { Setting } from "./settings.js";
-import { Channel } from "./channels.js";
-import { ChannelMember } from "./ChannelMembers.js";
-import { NotificationPreference } from "./NotificationPreferences.js";
 
 export const User = sequelize.define("User", {
   id: {
@@ -97,9 +91,11 @@ export const User = sequelize.define("User", {
   }
 });
 
-User.hasMany(Message, { foreignKey: "sender_id" });
-User.hasMany(Notification, { foreignKey: "user_id" });
-User.hasMany(Channel, { foreignKey: "owner_id" });
-User.hasMany(ChannelMember, { foreignKey: "user_id" });
-User.hasMany(NotificationPreference, { foreignKey: "user_id" });
-User.hasOne(Setting, { foreignKey: "user_id" });
+User.associate = (models) => {
+  User.hasMany(models.Message, { foreignKey: "sender_id" });
+  User.hasMany(models.Notification, { foreignKey: "user_id" });
+  User.hasMany(models.Channel, { foreignKey: "owner_id" });
+  User.hasMany(models.ChannelMember, { foreignKey: "user_id" });
+  User.hasMany(models.NotificationPreference, { foreignKey: "user_id" });
+  User.hasOne(models.Setting, { foreignKey: "user_id" });
+}

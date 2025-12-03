@@ -22,7 +22,10 @@ module.exports = {
       },
       role: {
         type: Sequelize.ENUM,
-        values: ["member", "admin", "owner"]
+        values: ["member", "admin", "owner"],
+        allowNull: false,
+        defaultValue: "member",
+        comment: 'Role of the user in the channel'
       },
       is_muted: {
         type: Sequelize.BOOLEAN,
