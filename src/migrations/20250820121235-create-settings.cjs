@@ -12,21 +12,29 @@ module.exports = {
       user_id: {
         type: Sequelize.UUID,
         allowNull: false,
+        unique: true,
         references: { model: 'users', key: 'id' }
       },
       theme: {
         type: Sequelize.ENUM,
-        values: ["light", "dark"],
+        values: ["light", "dark", "system"],
         defaultValue: "light"
       },
       language: {
-        type: Sequelize.CHAR,
+        type: Sequelize.STRING,
         allowNull: false,
         defaultValue: "english"
+        // Validation is handled at the model level
       },
       notification_sound: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false
+        type: Sequelize.ENUM,
+        values: ["default", "chime", "ding", "none"],
+        defaultValue: "default"
+      },
+      description: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        defaultValue: null
       },
       push_enabled: {
         type: Sequelize.BOOLEAN,

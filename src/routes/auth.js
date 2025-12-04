@@ -6,8 +6,8 @@ import { loginValidators } from "../validations/user/loginValidators.js";
 
 export const router = Router();
 
-router.post('/auth/register', validate(registerValidators), AuthController.registerUser);
-router.post('/auth/login', validate(loginValidators), AuthController.loginUser);
-router.get('/auth/refresh', AuthController.refreshToken);
+router.post('/register', validate(registerValidators), AuthController.registerUser);
+router.post('/login', validate(loginValidators), AuthController.loginUser);
+router.get('/refresh', AuthController.refreshToken);
 
-router.post('/auth/logout', AuthController.logoutUser);
+router.post('/logout', AuthController.logoutUser);

@@ -21,10 +21,32 @@ export const NotificationPreference = sequelize.define("NotificationPreference",
   },
   type: {
     type: DataTypes.ENUM,
-    values: ["mute", "blocked", "snooze"]
+    values: ["mute", "blocked", "snooze", "important", "custom"],
+    allowNull: false
   },
   mute_until: {
     type: DataTypes.DATE
+  },
+  preference_level: {
+    type: DataTypes.ENUM,
+    values: ["low", "normal", "high"],
+    defaultValue: "normal"
+  },
+  reason: {
+    type: DataTypes.STRING(128),
+    allowNull: true
+  },
+  is_active: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
+  created_by: {
+    type: DataTypes.UUID,
+    allowNull: true
+  },
+  updated_by: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 },{
   timestamps: true,
@@ -32,7 +54,12 @@ export const NotificationPreference = sequelize.define("NotificationPreference",
   version: true,
   tableName: 'notification_preferences',
   underscored: true,
-  createdAt: 'created_at'
+  createdAt: 'created_at',
+  indexes: [
+    { fields: ['user_id', 'channel_id', 'type'], unique: true },
+    { fields: ['user_id'] },
+    { fields: ['channel_id'] }
+  ]
 });
 
 NotificationPreference.associate = (models) => {

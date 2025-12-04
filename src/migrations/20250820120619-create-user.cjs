@@ -11,6 +11,11 @@ module.exports = {
         unique: true,
         defaultValue: Sequelize.UUIDV4,
       },
+      username: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true
+      },
       first_name: {
         type: Sequelize.STRING,
         allowNull: false
@@ -45,14 +50,30 @@ module.exports = {
         type: Sequelize.BOOLEAN,
         defaultValue: false
       },
+      avatar_url: {
+        type: Sequelize.STRING,
+        allowNull: true
+      },
+      bio: {
+        type: Sequelize.STRING(256),
+        allowNull: true
+      },
       public_key: {
-        type: Sequelize.BLOB,
+        type: Sequelize.STRING,
         allowNull: false
+      },
+      last_login: {
+        type: Sequelize.DATE,
+        allowNull: true
       },
       is_active: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
-        defaultValue: true
+        defaultValue: false
+      },
+      private_key: {
+        type: Sequelize.TEXT,
+        allowNull: false,
       },
       version: {
         type: Sequelize.INTEGER,

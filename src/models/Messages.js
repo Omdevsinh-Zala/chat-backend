@@ -24,7 +24,33 @@ export const Message = sequelize.define("Message", {
   },
   status: {
     type: DataTypes.ENUM,
-    values: ["send", "delivered", "read"],
+    values: ["sending", "sent", "delivered", "read", "failed"],
+    defaultValue: "sending"
+  },
+  message_type: {
+    type: DataTypes.ENUM,
+    values: ["text", "image", "video", "file", "audio", "system"],
+    defaultValue: "text"
+  },
+  attachments: {
+    type: DataTypes.JSONB,
+    allowNull: true
+  },
+  reply_to: {
+    type: DataTypes.UUID,
+    allowNull: true
+  },
+  edited_at: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  deleted_at: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  reactions: {
+    type: DataTypes.JSONB,
+    allowNull: true
   }
 },{
   timestamps: true,
@@ -32,7 +58,11 @@ export const Message = sequelize.define("Message", {
   version: true,
   tableName: 'messages',
   underscored: true,
-  createdAt: 'created_at'
+  createdAt: 'created_at',
+  indexes: [
+    { fields: ['channel_id'] },
+    { fields: ['sender_id'] }
+  ]
 });
 
 Message.associate = (models) => {

@@ -10,7 +10,30 @@ export const Channel = sequelize.define("Channel", {
     defaultValue: DataTypes.UUIDV4
   },
   title: {
-    type: DataTypes.CHAR
+    type: DataTypes.STRING(128),
+    allowNull: false
+  },
+  slug: {
+    type: DataTypes.STRING(128),
+    allowNull: false,
+    unique: true
+  },
+  avatar_url: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: { isUrl: true }
+  },
+  topic: {
+    type: DataTypes.STRING(256),
+    allowNull: true
+  },
+  last_message_at: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  is_private: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   },
   description: {
     type: DataTypes.TEXT
@@ -21,7 +44,8 @@ export const Channel = sequelize.define("Channel", {
   },
   type: {
     type: DataTypes.ENUM,
-    values: ["public", "private"],
+    values: ["public", "private", "dm", "group", "announcement"],
+    defaultValue: "public"
   },
   admin_ids: {
     type: DataTypes.ARRAY(DataTypes.UUID),
@@ -31,7 +55,8 @@ export const Channel = sequelize.define("Channel", {
   },
   status: {
     type: DataTypes.ENUM,
-    values: ["active", "archived"],
+    values: ["active", "archived", "locked", "deleted"],
+    defaultValue: "active"
   }
 },{
   timestamps: true,
@@ -40,7 +65,11 @@ export const Channel = sequelize.define("Channel", {
   tableName: 'channels',
   underscored: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [
+    { fields: ['owner_id'] },
+    { fields: ['type'] }
+  ]
 });
 
 Channel.associate = (models) => {

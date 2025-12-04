@@ -28,7 +28,34 @@ module.exports = {
       },
       status: {
         type: Sequelize.ENUM,
-        values: ["send", "delivered", "read"]
+        values: ["sending", "sent", "delivered", "read", "failed"],
+        defaultValue: "sending"
+      },
+      message_type: {
+        type: Sequelize.ENUM,
+        values: ["text", "image", "video", "file", "audio", "system"],
+        defaultValue: "text"
+      },
+      attachments: {
+        type: Sequelize.JSONB,
+        allowNull: true
+      },
+      reply_to: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: { model: 'messages', key: 'id' }
+      },
+      edited_at: {
+        type: Sequelize.DATE,
+        allowNull: true
+      },
+      deleted_at: {
+        type: Sequelize.DATE,
+        allowNull: true
+      },
+      reactions: {
+        type: Sequelize.JSONB,
+        allowNull: true
       },
       version: {
         type: Sequelize.INTEGER,
@@ -41,6 +68,8 @@ module.exports = {
         defaultValue: Sequelize.literal("CURRENT_TIMESTAMP")
       }
     });
+    await queryInterface.addIndex('messages', ['channel_id']);
+    await queryInterface.addIndex('messages', ['sender_id']);
   },
   async down(queryInterface) {
     await queryInterface.dropTable('messages');

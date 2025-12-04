@@ -25,10 +25,32 @@ module.exports = {
       },
       type: {
         type: Sequelize.ENUM,
-        values: ["mute", "blocked", "snooze"]
+        values: ["mute", "blocked", "snooze", "important", "custom"],
+        allowNull: false
       },
       mute_until: {
         type: Sequelize.DATE
+      },
+      preference_level: {
+        type: Sequelize.ENUM,
+        values: ["low", "normal", "high"],
+        defaultValue: "normal"
+      },
+      reason: {
+        type: Sequelize.STRING(128),
+        allowNull: true
+      },
+      is_active: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: true
+      },
+      created_by: {
+        type: Sequelize.UUID,
+        allowNull: true
+      },
+      updated_by: {
+        type: Sequelize.UUID,
+        allowNull: true
       },
       version: {
         type: Sequelize.INTEGER,
@@ -41,6 +63,9 @@ module.exports = {
         defaultValue: Sequelize.literal("CURRENT_TIMESTAMP")
       }
     });
+    await queryInterface.addIndex('notification_preferences', ['user_id', 'channel_id', 'type'], { unique: true });
+    await queryInterface.addIndex('notification_preferences', ['user_id']);
+    await queryInterface.addIndex('notification_preferences', ['channel_id']);
   },
   async down(queryInterface) {
     await queryInterface.dropTable('notification_preferences');

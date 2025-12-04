@@ -36,7 +36,28 @@ module.exports = {
       },
       joined_at: {
         allowNull: false,
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      },
+      is_active: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: true
+      },
+      invite_by: {
+        type: Sequelize.UUID,
+        allowNull: true
+      },
+      left_at: {
+        type: Sequelize.DATE,
+        allowNull: true
+      },
+      ban_until: {
+        type: Sequelize.DATE,
+        allowNull: true
+      },
+      custom_data: {
+        type: Sequelize.JSONB,
+        allowNull: true
       },
       version: {
         type: Sequelize.INTEGER,
@@ -49,6 +70,8 @@ module.exports = {
         defaultValue: Sequelize.literal("CURRENT_TIMESTAMP")
       }
     });
+    await queryInterface.addIndex('channel_members', ['channel_id']);
+    await queryInterface.addIndex('channel_members', ['user_id']);
   },
   async down(queryInterface) {
     await queryInterface.dropTable('channel_members');

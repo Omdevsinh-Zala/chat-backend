@@ -10,21 +10,26 @@ export const Setting = sequelize.define("Setting", {
   },
   user_id: {
     type: DataTypes.UUID,
-    allowNull: false
+    allowNull: false,
+    unique: true
   },
   theme: {
     type: DataTypes.ENUM,
-    values: ["light", "dark"],
+    values: ["light", "dark", "system"],
     defaultValue: "light"
   },
   language: {
-    type: DataTypes.CHAR,
+    type: DataTypes.STRING,
     allowNull: false,
-    defaultValue: "english"
+    defaultValue: "english",
+    validate: {
+      isIn: [["english", "spanish", "french", "german", "hindi", "chinese", "japanese"]]
+    }
   },
   notification_sound: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+    type: DataTypes.ENUM,
+    values: ["default", "chime", "ding", "none"],
+    defaultValue: "default"
   },
   push_enabled: {
     type: DataTypes.BOOLEAN,
@@ -34,6 +39,11 @@ export const Setting = sequelize.define("Setting", {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: false
+  },
+  description: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null
   }
 },{
   timestamps: true,

@@ -11,7 +11,29 @@ module.exports = {
         defaultValue: Sequelize.UUIDV4
       },
       title: {
-        type: Sequelize.CHAR
+        type: Sequelize.STRING(128),
+        allowNull: false
+      },
+      slug: {
+        type: Sequelize.STRING(128),
+        allowNull: false,
+        unique: true
+      },
+      avatar_url: {
+        type: Sequelize.STRING,
+        allowNull: true
+      },
+      topic: {
+        type: Sequelize.STRING(256),
+        allowNull: true
+      },
+      last_message_at: {
+        type: Sequelize.DATE,
+        allowNull: true
+      },
+      is_private: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
       },
       description: {
         type: Sequelize.TEXT
@@ -23,7 +45,8 @@ module.exports = {
       },
       type: {
         type: Sequelize.ENUM,
-        values: ["public", "private"]
+        values: ["public", "private", "dm", "group", "announcement"],
+        defaultValue: "public"
       },
       admin_ids: {
         type: Sequelize.ARRAY(Sequelize.UUID),
@@ -33,7 +56,8 @@ module.exports = {
       },
       status: {
         type: Sequelize.ENUM,
-        values: ["active", "archived"]
+        values: ["active", "archived", "locked", "deleted"],
+        defaultValue: "active"
       },
       version: {
         type: Sequelize.INTEGER,
@@ -51,6 +75,8 @@ module.exports = {
         defaultValue: Sequelize.literal("CURRENT_TIMESTAMP")
       }
     });
+    await queryInterface.addIndex('channels', ['owner_id']);
+    await queryInterface.addIndex('channels', ['type']);
   },
   async down(queryInterface) {
     await queryInterface.dropTable('channels');

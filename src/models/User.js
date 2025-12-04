@@ -1,6 +1,7 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "./index.js";
 import { genSalt, hash } from "bcrypt";
+import { config } from "../config/app.js";
 
 export const User = sequelize.define("User", {
   id: {
@@ -8,6 +9,17 @@ export const User = sequelize.define("User", {
     primaryKey: true,
     unique: true,
     defaultValue: DataTypes.UUIDV4,
+  },
+  username: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+    validate: {
+      notNull: true,
+      notEmpty: true,
+      len: [3, 32],
+      is: /^[a-zA-Z0-9_]+$/i
+    }
   },
   full_name: {
     type: DataTypes.VIRTUAL,
@@ -32,9 +44,27 @@ export const User = sequelize.define("User", {
     allowNull: false,
     unique: true,
     validate: {
-      isEmail: true
+      notNull: true,
+      notEmpty: true,
+      isEmail: true,
+      len: [5, 128]
     }
   },
+    avatar_url: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isUrl: true
+      }
+    },
+    bio: {
+      type: DataTypes.STRING(256),
+      allowNull: true
+    },
+    last_login: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
   password: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -51,7 +81,7 @@ export const User = sequelize.define("User", {
   is_active: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
-    defaultValue: true
+    defaultValue: false
   },
   is_blocked: {
     type: DataTypes.BOOLEAN,
@@ -65,6 +95,10 @@ export const User = sequelize.define("User", {
     type: DataTypes.STRING,
     allowNull: false
   },
+  private_key: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
 },
 {
   timestamps: true,
@@ -77,19 +111,62 @@ export const User = sequelize.define("User", {
   deletedAt: 'deleted_at',
   hooks: {
     beforeCreate: async (user) => {
-      const salt = await genSalt(5);
+      const salt = await genSalt(config.saltRounds);
       const hashPass = await hash(user.password, salt);
       user.password = hashPass;
+
+      const crypto = await import('crypto');
+      const key = crypto.pbkdf2Sync(
+        user.password,
+        salt,
+        config.pbkdf2.iterations,
+        config.pbkdf2.keylen,
+        config.pbkdf2.digest
+      );
+      const iv = crypto.randomBytes(config.aes.iv);
+      const cipher = crypto.createCipheriv(config.aes.algorithm, key, iv);
+      let encrypted = cipher.update(user.private_key, 'utf8', 'base64');
+      encrypted += cipher.final('base64');
+      user.private_key = iv.toString('base64') + ':' + encrypted;
     },
     beforeUpdate: async (user) => {
       if (user.changed("password")) {
-        const salt = await genSalt(5);
+        const salt = await genSalt(config.saltRounds);
         const hashPass = await hash(user.password, salt);
         user.password = hashPass;
+
+        const crypto = await import('crypto');
+        const key = crypto.pbkdf2Sync(
+          user.password,
+          salt,
+          config.pbkdf2.iterations,
+          config.pbkdf2.keylen,
+          config.pbkdf2.digest
+        );
+        const iv = crypto.randomBytes(config.aes.iv);
+        const cipher = crypto.createCipheriv(config.aes.algorithm, key, iv);
+        let encrypted = cipher.update(user.private_key, 'utf8', 'base64');
+        encrypted += cipher.final('base64');
+        user.private_key = iv.toString('base64') + ':' + encrypted;
       }
     }
+  },
+  defaultScope: {
+    attributes: { exclude: ['password', 'providers', 'login_provider', 'is_blocked'] }
+  },
+  instanceMethods: {
+    toJSON() {
+      const values = Object.assign({}, this.get());
+      // Remove sensitive fields if not already excluded
+      delete values.password;
+      delete values.providers;
+      delete values.login_provider;
+      delete values.is_blocked;
+      return values;
+    }
   }
-});
+}
+);
 
 User.associate = (models) => {
   User.hasMany(models.Message, { foreignKey: "sender_id" });

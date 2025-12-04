@@ -35,7 +35,28 @@ export const ChannelMember = sequelize.define("ChannelMember", {
   },
   joined_at: {
     allowNull: false,
-    type: DataTypes.DATE
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  is_active: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
+  invite_by: {
+    type: DataTypes.UUID,
+    allowNull: true
+  },
+  left_at: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  ban_until: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  custom_data: {
+    type: DataTypes.JSONB,
+    allowNull: true
   }
 },{
   timestamps: true,
@@ -43,7 +64,11 @@ export const ChannelMember = sequelize.define("ChannelMember", {
   version: true,
   tableName: 'channel_members',
   underscored: true,
-  createdAt: 'created_at'
+  createdAt: 'created_at',
+  indexes: [
+    { fields: ['channel_id'] },
+    { fields: ['user_id'] }
+  ]
 });
 
 ChannelMember.associate = (models) => {

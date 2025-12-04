@@ -7,6 +7,16 @@ export const config = {
     port: process.env.PORT,
     env: process.env.NODE_ENV,
     private_key_secret: process.env.PRIVATE_KEY_SECRET,
+    pbkdf2: {
+        iterations: parseInt(process.env.PBKDF2_ITERATIONS, 10),
+        keylen: parseInt(process.env.PBKDF2_KEYLEN, 10),
+        digest: process.env.PBKDF2_DIGEST,
+    },
+    aes: {
+        algorithm: process.env.AES_ALGORITHM,
+        iv: parseInt(process.env.AES_IV_LENGTH, 10),
+    },
+    saltRounds: parseInt(process.env.PRIVATE_KEY_ENCRYPTION_SALT_ROUNDS, 10),
     jwt: {
         access: {
             secret: process.env.ACCESS_TOKEN_SECRET,

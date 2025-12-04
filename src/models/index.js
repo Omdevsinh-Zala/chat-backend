@@ -9,5 +9,13 @@ export const sequelize = new Sequelize(
   configs.database,
   configs.username,
   configs.password,
-  configs
+  {
+    ...configs,
+    pool: {
+      max: 10,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  }
 );

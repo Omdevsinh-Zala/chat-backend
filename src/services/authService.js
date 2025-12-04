@@ -1,10 +1,10 @@
 import { compare } from "bcrypt";
 import { User } from "../models/User.js";
-import { response } from "./response.js";
 import { generateToken } from "./tokenService.js";
 import { createUserKeys } from "../utils/keyGenerator.js";
 import logger from "../config/logger.js";
 import { Setting } from "../models/settings.js";
+import AppError from "../utils/appError.js";
 
 export const registerUser = async(data, t) => {
     const keys = createUserKeys();
@@ -18,7 +18,8 @@ export const registerUser = async(data, t) => {
         last_name: data.lastName,
         email: data.email,
         password: data.password,
-        public_key: keys.publicKey
+        public_key: keys.publicKey,
+        private_key: keys.privateKey
     }, { transaction: t });
 
     await Setting.create({
@@ -28,21 +29,19 @@ export const registerUser = async(data, t) => {
     return { privateKey: keys.privateKey };
 }
 
-export const loginUser = async(data, res) => {
+export const loginUser = async(data) => {
     const user = await User.findOne({
         where: {
             email: data.email,
         }
     });
     if(!user) {
-        const resp = response(false, null, "Invalid credentials.");
-        return res.status(401).json(resp);
+        throw new AppError("Invalid credentials.", 400);
     }
 
     const isCorrectPassword = await compare(data.password, user.toJSON().password);
     if(!isCorrectPassword) {
-        const resp = response(false, null, "Invalid credentials.");
-        return res.status(401).json(resp);
+        throw new AppError("Invalid credentials.", 400);
     }
 
     const accessToken = generateToken({ id: user.toJSON().id, email: user.toJSON().email }, 'access');
@@ -60,15 +59,15 @@ export const loginUser = async(data, res) => {
 
 export const logoutUser = (res) => {
     return res.status(200).clearCookie('access_token', {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'None',
-            maxAge: 3600000
-        })
-        .clearCookie('refresh_token', {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'None',
-            maxAge: 24 * 3600000
-        });
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        maxAge: 3600000
+    })
+    .clearCookie('refresh_token', {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        maxAge: 24 * 3600000
+    });
 }
