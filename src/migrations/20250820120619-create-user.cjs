@@ -59,7 +59,7 @@ module.exports = {
         allowNull: true
       },
       public_key: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
         allowNull: false
       },
       last_login: {

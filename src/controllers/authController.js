@@ -78,3 +78,15 @@ export const logoutUser = async (req, res, next) => {
         return next(err);
     }
 }
+
+export const checkUsername = async (req, res, next) => {
+    try {
+        const { username } = req.query;
+        const user = await LoginService.checkUsername(username);
+        const isAvailable = !user;
+        return successResponse({res, data: { isAvailable }, message: "Username availability checked successfully.", statusCode: 200});
+    } catch (err) {
+        logger.error(err.message);
+        return next(err);
+    }
+}

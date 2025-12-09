@@ -50,21 +50,21 @@ export const User = sequelize.define("User", {
       len: [5, 128]
     }
   },
-    avatar_url: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      validate: {
-        isUrl: true
-      }
-    },
-    bio: {
-      type: DataTypes.STRING(256),
-      allowNull: true
-    },
-    last_login: {
-      type: DataTypes.DATE,
-      allowNull: true
-    },
+  avatar_url: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: {
+      isUrl: true
+    }
+  },
+  bio: {
+    type: DataTypes.STRING(256),
+    allowNull: true
+  },
+  last_login: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
   password: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -92,7 +92,7 @@ export const User = sequelize.define("User", {
     defaultValue: false
   },
   public_key: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: false
   },
   private_key: {
@@ -154,19 +154,17 @@ export const User = sequelize.define("User", {
   defaultScope: {
     attributes: { exclude: ['password', 'providers', 'login_provider', 'is_blocked'] }
   },
-  instanceMethods: {
-    toJSON() {
-      const values = Object.assign({}, this.get());
-      // Remove sensitive fields if not already excluded
-      delete values.password;
-      delete values.providers;
-      delete values.login_provider;
-      delete values.is_blocked;
-      return values;
-    }
-  }
 }
 );
+
+User.prototype.toJSON = function () {
+  const values = Object.assign({}, this.get());
+  delete values.password;
+  delete values.providers;
+  delete values.login_provider;
+  delete values.is_blocked;
+  return values;
+};
 
 User.associate = (models) => {
   User.hasMany(models.Message, { foreignKey: "sender_id" });

@@ -3,8 +3,9 @@ import { User } from "../models/User.js";
 import { generateToken } from "./tokenService.js";
 import { createUserKeys } from "../utils/keyGenerator.js";
 import logger from "../config/logger.js";
-import { Setting } from "../models/settings.js";
+import { Setting } from "../models/Settings.js";
 import AppError from "../utils/appError.js";
+import { randomImage } from "../utils/profileImagePicker.js";
 
 export const registerUser = async(data, t) => {
     const keys = createUserKeys();
@@ -16,8 +17,10 @@ export const registerUser = async(data, t) => {
     const user = await User.create({
         first_name: data.firstName,
         last_name: data.lastName,
+        username: data.username,
         email: data.email,
         password: data.password,
+        avatar_url: randomImage(),
         public_key: keys.publicKey,
         private_key: keys.privateKey
     }, { transaction: t });
@@ -33,13 +36,14 @@ export const loginUser = async(data) => {
     const user = await User.findOne({
         where: {
             email: data.email,
-        }
+        },
+        attributes: ['password', 'email', 'id', 'first_name', 'last_name', 'username'],
     });
     if(!user) {
         throw new AppError("Invalid credentials.", 400);
     }
 
-    const isCorrectPassword = await compare(data.password, user.toJSON().password);
+    const isCorrectPassword = await compare(data.password, user.getDataValue('password'));
     if(!isCorrectPassword) {
         throw new AppError("Invalid credentials.", 400);
     }
@@ -70,4 +74,15 @@ export const logoutUser = (res) => {
         sameSite: 'lax',
         maxAge: 24 * 3600000
     });
+}
+
+export const checkUsername = async(username) => {
+    const user = await User.findOne({
+        where: {
+            username: username,
+        },
+        attributes: ['id'],
+        raw: true,
+    });
+    return !!user;
 }

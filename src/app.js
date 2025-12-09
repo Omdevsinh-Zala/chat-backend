@@ -30,7 +30,7 @@ app.use(cors({
   origin: 'http://localhost:4200',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
-}))
+}));
 
 const socketIO = io.of('/api/v1/socket');
 
@@ -42,9 +42,12 @@ socketIO.on('connection', (socket) => {
   registerSocketHandlers(socketIO, socket);
 });
 
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/public', express.static("public"));
 
 app.use('/api/v1/auth', router);
 app.use('/api/v1/users', userRouter);
