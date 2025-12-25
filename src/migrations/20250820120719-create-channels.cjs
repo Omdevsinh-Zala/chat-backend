@@ -41,7 +41,9 @@ module.exports = {
       owner_id: {
         type: Sequelize.UUID,
         allowNull: false,
-        references: { model: 'users', key: 'id' }
+        references: { model: 'users', key: 'id' },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
       },
       type: {
         type: Sequelize.ENUM,
@@ -73,10 +75,19 @@ module.exports = {
         type: Sequelize.DATE,
         allowNull: false,
         defaultValue: Sequelize.literal("CURRENT_TIMESTAMP")
+      },
+      deleted_at: {
+        type: Sequelize.DATE,
+        allowNull: true
       }
     });
+
+    // Add indexes for performance
     await queryInterface.addIndex('channels', ['owner_id']);
     await queryInterface.addIndex('channels', ['type']);
+    await queryInterface.addIndex('channels', ['slug']);
+    await queryInterface.addIndex('channels', ['status', 'type']);
+    await queryInterface.addIndex('channels', ['last_message_at']);
   },
   async down(queryInterface) {
     await queryInterface.dropTable('channels');

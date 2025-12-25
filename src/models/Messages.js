@@ -52,7 +52,7 @@ export const Message = sequelize.define("Message", {
     type: DataTypes.JSONB,
     allowNull: true
   }
-},{
+}, {
   timestamps: true,
   paranoid: true,
   version: true,
@@ -66,7 +66,7 @@ export const Message = sequelize.define("Message", {
 });
 
 Message.associate = (models) => {
-  Message.belongsTo(models.User, { foreignKey: "sender_id" });
+  Message.belongsTo(models.User, { foreignKey: "sender_id", as: "Sender" });
   Message.belongsTo(models.Channel, { foreignKey: "channel_id" });
   Message.belongsTo(models.User, { foreignKey: "receiver_id", as: "Receiver" });
 };

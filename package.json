@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "pm2 start src/app.js",
     "dev": "eslint . && pm2 start src/server.js --watch --ext js --name chat-backend",
+    "nodemon": "eslint . && nodemon src/server.js --watch . --ext js",
     "log": "pm2 logs",
     "stop": "pm2 kill",
     "create": "npx sequelize-cli db:create",

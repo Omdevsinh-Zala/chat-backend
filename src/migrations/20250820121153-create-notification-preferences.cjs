@@ -13,15 +13,23 @@ module.exports = {
       user_id: {
         type: Sequelize.UUID,
         allowNull: false,
-        references: { model: 'users', key: 'id' }
+        references: { model: 'users', key: 'id' },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
       },
       target_user_id: {
         type: Sequelize.UUID,
-        references: { model: 'users', key: 'id' }
+        allowNull: true,
+        references: { model: 'users', key: 'id' },
+        onDelete: 'SET NULL',
+        onUpdate: 'CASCADE'
       },
       channel_id: {
         type: Sequelize.UUID,
-        references: { model: 'channels', key: 'id' }
+        allowNull: true,
+        references: { model: 'channels', key: 'id' },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
       },
       type: {
         type: Sequelize.ENUM,
@@ -46,11 +54,17 @@ module.exports = {
       },
       created_by: {
         type: Sequelize.UUID,
-        allowNull: true
+        allowNull: true,
+        references: { model: 'users', key: 'id' },
+        onDelete: 'SET NULL',
+        onUpdate: 'CASCADE'
       },
       updated_by: {
         type: Sequelize.UUID,
-        allowNull: true
+        allowNull: true,
+        references: { model: 'users', key: 'id' },
+        onDelete: 'SET NULL',
+        onUpdate: 'CASCADE'
       },
       version: {
         type: Sequelize.INTEGER,
@@ -61,8 +75,19 @@ module.exports = {
         type: Sequelize.DATE,
         allowNull: false,
         defaultValue: Sequelize.literal("CURRENT_TIMESTAMP")
+      },
+      updated_at: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal("CURRENT_TIMESTAMP")
+      },
+      deleted_at: {
+        type: Sequelize.DATE,
+        allowNull: true
       }
     });
+
+    // Add indexes for performance
     await queryInterface.addIndex('notification_preferences', ['user_id', 'channel_id', 'type'], { unique: true });
     await queryInterface.addIndex('notification_preferences', ['user_id']);
     await queryInterface.addIndex('notification_preferences', ['channel_id']);

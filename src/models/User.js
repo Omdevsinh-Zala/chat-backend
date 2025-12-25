@@ -91,70 +91,46 @@ export const User = sequelize.define("User", {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
-  public_key: {
-    type: DataTypes.TEXT,
-    allowNull: false
-  },
-  private_key: {
-    type: DataTypes.TEXT,
-    allowNull: false,
+  // public_key: {
+  //   type: DataTypes.TEXT,
+  //   allowNull: false,
+  //   comment: 'Public key for end-to-end encryption (generated client-side)'
+  // },
+  active_chat_id: {
+    type: DataTypes.UUID,
+    allowNull: true
   },
 },
-{
-  timestamps: true,
-  paranoid: true,
-  version: true,
-  tableName: 'users',
-  underscored: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
-  deletedAt: 'deleted_at',
-  hooks: {
-    beforeCreate: async (user) => {
-      const salt = await genSalt(config.saltRounds);
-      const hashPass = await hash(user.password, salt);
-      user.password = hashPass;
-
-      const crypto = await import('crypto');
-      const key = crypto.pbkdf2Sync(
-        user.password,
-        salt,
-        config.pbkdf2.iterations,
-        config.pbkdf2.keylen,
-        config.pbkdf2.digest
-      );
-      const iv = crypto.randomBytes(config.aes.iv);
-      const cipher = crypto.createCipheriv(config.aes.algorithm, key, iv);
-      let encrypted = cipher.update(user.private_key, 'utf8', 'base64');
-      encrypted += cipher.final('base64');
-      user.private_key = iv.toString('base64') + ':' + encrypted;
-    },
-    beforeUpdate: async (user) => {
-      if (user.changed("password")) {
+  {
+    timestamps: true,
+    paranoid: true,
+    version: true,
+    tableName: 'users',
+    underscored: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    deletedAt: 'deleted_at',
+    hooks: {
+      beforeCreate: async (user) => {
+        if (!user.active_chat_id) {
+          user.active_chat_id = user.id;
+        }
         const salt = await genSalt(config.saltRounds);
         const hashPass = await hash(user.password, salt);
         user.password = hashPass;
-
-        const crypto = await import('crypto');
-        const key = crypto.pbkdf2Sync(
-          user.password,
-          salt,
-          config.pbkdf2.iterations,
-          config.pbkdf2.keylen,
-          config.pbkdf2.digest
-        );
-        const iv = crypto.randomBytes(config.aes.iv);
-        const cipher = crypto.createCipheriv(config.aes.algorithm, key, iv);
-        let encrypted = cipher.update(user.private_key, 'utf8', 'base64');
-        encrypted += cipher.final('base64');
-        user.private_key = iv.toString('base64') + ':' + encrypted;
+      },
+      beforeUpdate: async (user) => {
+        if (user.changed("password")) {
+          const salt = await genSalt(config.saltRounds);
+          const hashPass = await hash(user.password, salt);
+          user.password = hashPass;
+        }
       }
-    }
-  },
-  defaultScope: {
-    attributes: { exclude: ['password', 'providers', 'login_provider', 'is_blocked'] }
-  },
-}
+    },
+    defaultScope: {
+      attributes: { exclude: ['password', 'providers', 'login_provider', 'is_blocked'] }
+    },
+  }
 );
 
 User.prototype.toJSON = function () {
@@ -167,10 +143,16 @@ User.prototype.toJSON = function () {
 };
 
 User.associate = (models) => {
-  User.hasMany(models.Message, { foreignKey: "sender_id" });
+  User.hasMany(models.Message, { foreignKey: "sender_id", as: "SentMessages" });
   User.hasMany(models.Notification, { foreignKey: "user_id" });
-  User.hasMany(models.Channel, { foreignKey: "owner_id" });
   User.hasMany(models.ChannelMember, { foreignKey: "user_id" });
   User.hasMany(models.NotificationPreference, { foreignKey: "user_id" });
   User.hasOne(models.Setting, { foreignKey: "user_id" });
+  // Many-to-Many relationship with Channel through ChannelMember
+  User.belongsToMany(models.Channel, {
+    through: models.ChannelMember,
+    foreignKey: "user_id",
+    otherKey: "channel_id",
+    as: "Channels"
+  });
 }

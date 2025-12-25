@@ -26,5 +26,6 @@ export const config = {
             secret: process.env.REFRESH_TOKEN_SECRET,
             expire: process.env.REFRESH_TOKEN_EXPIRE,
         }
-    }
+    },
+    origins: process.env.WEB_DOMAIN.split(',').map((domain) => domain.trim())
 }

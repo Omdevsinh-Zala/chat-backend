@@ -13,22 +13,34 @@ module.exports = {
       user_id: {
         type: Sequelize.UUID,
         allowNull: false,
-        references: { model: 'users', key: 'id' }
+        references: { model: 'users', key: 'id' },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+        comment: 'User receiving the notification'
       },
       sender_id: {
         type: Sequelize.UUID,
-        allowNull: false,
-        references: { model: 'users', key: 'id' }
+        allowNull: true,
+        references: { model: 'users', key: 'id' },
+        onDelete: 'SET NULL',
+        onUpdate: 'CASCADE',
+        comment: 'User who triggered the notification (null for system notifications)'
       },
       channel_id: {
         type: Sequelize.UUID,
-        allowNull: false,
-        references: { model: 'channels', key: 'id' }
+        allowNull: true,
+        references: { model: 'channels', key: 'id' },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+        comment: 'Related channel (nullable - not all notifications are channel-related)'
       },
       message_id: {
         type: Sequelize.UUID,
-        allowNull: false,
-        references: { model: 'messages', key: 'id' }
+        allowNull: true,
+        references: { model: 'messages', key: 'id' },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+        comment: 'Related message (nullable - not all notifications are message-related)'
       },
       type: {
         type: Sequelize.ENUM,
@@ -94,10 +106,15 @@ module.exports = {
       deleted_at: {
         type: Sequelize.DATE,
         allowNull: true
-      }
+      },
     });
+
+    // Add indexes for performance
     await queryInterface.addIndex('notifications', ['user_id', 'is_read']);
     await queryInterface.addIndex('notifications', ['expires_at']);
+    await queryInterface.addIndex('notifications', ['sender_id']);
+    await queryInterface.addIndex('notifications', ['user_id', 'is_read', 'created_at']);
+    await queryInterface.addIndex('notifications', ['type']);
   },
   async down(queryInterface) {
     await queryInterface.dropTable('notifications');

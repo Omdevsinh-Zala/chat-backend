@@ -7,15 +7,17 @@ import cookieParser from 'cookie-parser';
 // import logger from './config/logger.js';
 import { router } from './routes/auth.js';
 import { verifySocketToken } from './middlewares/verifyToken.js';
-import { registerSocketHandlers } from './controllers/socketController.js';
 import globalErrorHandler from './middlewares/globalErrorHandler.js';
 import { userRouter } from './routes/user.js';
+import { setupSocketHandlers } from './controllers/socketController.js';
+import { config } from './config/app.js';
 
 const app = express();
 const server = createServer(app)
+
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:4200',
+    origin: config.origins,
     credentials: true
   },
   cookie: true
@@ -27,20 +29,28 @@ io.engine.use(helmet());
 io.engine.use(cookieParser());
 
 app.use(cors({
-  origin: 'http://localhost:4200',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+
+    if (config.origins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
 }));
 
-const socketIO = io.of('/api/v1/socket');
+export const socketIO = io.of('/api/v1/socket');
 
 socketIO.use((socket, next) => {
   verifySocketToken(socket, next);
 });
 
-socketIO.on('connection', (socket) => {
-  registerSocketHandlers(socketIO, socket);
-});
+// Setup socket handlers after socketIO is initialized
+setupSocketHandlers(socketIO);
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }

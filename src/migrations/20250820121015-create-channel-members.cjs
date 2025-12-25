@@ -13,12 +13,16 @@ module.exports = {
       channel_id: {
         type: Sequelize.UUID,
         allowNull: false,
-        references: { model: 'channels', key: 'id' }
+        references: { model: 'channels', key: 'id' },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
       },
       user_id: {
         type: Sequelize.UUID,
         allowNull: false,
-        references: { model: 'users', key: 'id' }
+        references: { model: 'users', key: 'id' },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
       },
       role: {
         type: Sequelize.ENUM,
@@ -45,7 +49,10 @@ module.exports = {
       },
       invite_by: {
         type: Sequelize.UUID,
-        allowNull: true
+        allowNull: true,
+        references: { model: 'users', key: 'id' },
+        onDelete: 'SET NULL',
+        onUpdate: 'CASCADE'
       },
       left_at: {
         type: Sequelize.DATE,
@@ -68,10 +75,30 @@ module.exports = {
         type: Sequelize.DATE,
         allowNull: false,
         defaultValue: Sequelize.literal("CURRENT_TIMESTAMP")
+      },
+      updated_at: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal("CURRENT_TIMESTAMP")
+      },
+      deleted_at: {
+        type: Sequelize.DATE,
+        allowNull: true
       }
     });
+
+    // Add unique constraint to prevent duplicate memberships
+    await queryInterface.addConstraint('channel_members', {
+      fields: ['channel_id', 'user_id'],
+      type: 'unique',
+      name: 'unique_channel_user_membership'
+    });
+
+    // Add indexes for performance
     await queryInterface.addIndex('channel_members', ['channel_id']);
     await queryInterface.addIndex('channel_members', ['user_id']);
+    await queryInterface.addIndex('channel_members', ['channel_id', 'is_active']);
+    await queryInterface.addIndex('channel_members', ['user_id', 'is_active']);
   },
   async down(queryInterface) {
     await queryInterface.dropTable('channel_members');

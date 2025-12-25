@@ -58,10 +58,11 @@ module.exports = {
         type: Sequelize.STRING(256),
         allowNull: true
       },
-      public_key: {
-        type: Sequelize.TEXT,
-        allowNull: false
-      },
+      // public_key: {
+      //   type: Sequelize.TEXT,
+      //   allowNull: false,
+      //   comment: 'Public key for end-to-end encryption (client-side)'
+      // },
       last_login: {
         type: Sequelize.DATE,
         allowNull: true
@@ -69,16 +70,17 @@ module.exports = {
       is_active: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
-        defaultValue: false
-      },
-      private_key: {
-        type: Sequelize.TEXT,
-        allowNull: false,
+        defaultValue: false,
+        comment: 'Global online/offline status - see user_sessions for per-device status'
       },
       version: {
         type: Sequelize.INTEGER,
         allowNull: false,
         defaultValue: 0
+      },
+      active_chat_id: {
+        type: Sequelize.UUID,
+        allowNull: true
       },
       created_at: {
         type: Sequelize.DATE,
@@ -91,9 +93,15 @@ module.exports = {
         defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
       },
       deleted_at: {
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
+        allowNull: true
       }
     });
+
+    // Add indexes for performance
+    await queryInterface.addIndex('users', ['username']);
+    await queryInterface.addIndex('users', ['email']);
+    await queryInterface.addIndex('users', ['is_active']);
   },
   async down(queryInterface) {
     await queryInterface.dropTable('users');

@@ -13,7 +13,9 @@ module.exports = {
         type: Sequelize.UUID,
         allowNull: false,
         unique: true,
-        references: { model: 'users', key: 'id' }
+        references: { model: 'users', key: 'id' },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
       },
       theme: {
         type: Sequelize.ENUM,
@@ -61,9 +63,13 @@ module.exports = {
         defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
       },
       deleted_at: {
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
+        allowNull: true
       }
     });
+
+    // Add index for performance
+    await queryInterface.addIndex('settings', ['user_id']);
   },
   async down(queryInterface) {
     await queryInterface.dropTable('settings');

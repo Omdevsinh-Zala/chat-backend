@@ -1,4 +1,4 @@
-import { User } from "../models/User.js"
+import { User } from "../models/initModels.js"
 import AppError from "../utils/appError.js";
 
 export const getUserData = async (id) => {

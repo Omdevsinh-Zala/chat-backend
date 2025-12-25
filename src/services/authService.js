@@ -1,19 +1,10 @@
 import { compare } from "bcrypt";
-import { User } from "../models/User.js";
+import { User, Setting } from "../models/initModels.js";
 import { generateToken } from "./tokenService.js";
-import { createUserKeys } from "../utils/keyGenerator.js";
-import logger from "../config/logger.js";
-import { Setting } from "../models/Settings.js";
 import AppError from "../utils/appError.js";
 import { randomImage } from "../utils/profileImagePicker.js";
 
-export const registerUser = async(data, t) => {
-    const keys = createUserKeys();
-    if(!keys || !keys.publicKey || !keys.privateKey) {
-        logger.error("Key pair generation failed.");
-        throw new Error("Something went wrong. Please try again later!");
-    }
-
+export const registerUser = async (data, t) => {
     const user = await User.create({
         first_name: data.firstName,
         last_name: data.lastName,
@@ -21,42 +12,33 @@ export const registerUser = async(data, t) => {
         email: data.email,
         password: data.password,
         avatar_url: randomImage(),
-        public_key: keys.publicKey,
-        private_key: keys.privateKey
     }, { transaction: t });
 
     await Setting.create({
         user_id: user.toJSON().id
     }, { transaction: t })
-
-    return { privateKey: keys.privateKey };
 }
 
-export const loginUser = async(data) => {
+export const loginUser = async (data) => {
     const user = await User.findOne({
         where: {
             email: data.email,
         },
         attributes: ['password', 'email', 'id', 'first_name', 'last_name', 'username'],
     });
-    if(!user) {
+    if (!user) {
         throw new AppError("Invalid credentials.", 400);
     }
 
     const isCorrectPassword = await compare(data.password, user.getDataValue('password'));
-    if(!isCorrectPassword) {
+    if (!isCorrectPassword) {
         throw new AppError("Invalid credentials.", 400);
     }
 
     const accessToken = generateToken({ id: user.toJSON().id, email: user.toJSON().email }, 'access');
     const refreshToken = generateToken({ id: user.toJSON().id, email: user.toJSON().email }, 'refresh');
 
-    const userData = {
-        firstName: user.toJSON().first_name,
-        lastName: user.toJSON().last_name,
-        fullName: user.toJSON().full_name,
-        email: user.toJSON().email,
-    }
+    const userData = user.toJSON();
 
     return { userData, accessToken, refreshToken };
 }
@@ -68,15 +50,15 @@ export const logoutUser = (res) => {
         sameSite: 'lax',
         maxAge: 3600000
     })
-    .clearCookie('refresh_token', {
-        httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
-        maxAge: 24 * 3600000
-    });
+        .clearCookie('refresh_token', {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 24 * 3600000
+        });
 }
 
-export const checkUsername = async(username) => {
+export const checkUsername = async (username) => {
     const user = await User.findOne({
         where: {
             username: username,

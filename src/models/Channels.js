@@ -58,7 +58,7 @@ export const Channel = sequelize.define("Channel", {
     values: ["active", "archived", "locked", "deleted"],
     defaultValue: "active"
   }
-},{
+}, {
   timestamps: true,
   paranoid: true,
   version: true,
@@ -73,7 +73,13 @@ export const Channel = sequelize.define("Channel", {
 });
 
 Channel.associate = (models) => {
-  Channel.belongsTo(models.User, { foreignKey: "owner_id" });
   Channel.hasMany(models.ChannelMember, { foreignKey: "channel_id" });
   Channel.hasMany(models.Message, { foreignKey: "channel_id" });
+  // Many-to-Many relationship with User through ChannelMember
+  Channel.belongsToMany(models.User, {
+    through: models.ChannelMember,
+    foreignKey: "channel_id",
+    otherKey: "user_id",
+    as: "Members"
+  });
 };
