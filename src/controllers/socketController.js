@@ -28,9 +28,20 @@ export const setupSocketHandlers = (socketIO) => {
       socket.emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(socket.user.id) });
     })
 
-    socket.on('readMessage', async ({ messageId }) => {
-      await SocketService.readMessages(messageId);
-      socket.emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(socket.user.id) });
+    socket.on('readMessage', async ({ receiverId, messageId }) => {
+      const currentUserId = socket.user.id;
+      const userMessage = await SocketService.readMessages(receiverId, messageId);
+
+      if (userMessage) {
+        // Emit to the receiver (current user who marked it as read)
+        socket.emit('receiveChatMessage', { chat: userMessage });
+
+        // Emit to the sender so they see the status update
+        socketIO.to(userMessage.sender_id).emit('receiveChatMessage', { chat: userMessage });
+
+        // Update recently messaged users for the current user
+        socket.emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(currentUserId) });
+      }
     })
 
     // Join a room (channel)

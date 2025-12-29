@@ -27,5 +27,9 @@ export const config = {
             expire: process.env.REFRESH_TOKEN_EXPIRE,
         }
     },
-    origins: process.env.WEB_DOMAIN.split(',').map((domain) => domain.trim())
+    origins: process.env.WEB_DOMAIN.split(',').map((domain) => domain.trim()),
+    pagination: {
+        limit: parseInt(process.env.PAGINATION_LIMIT, 10),
+        offset: parseInt(process.env.PAGINATION_OFFSET, 10),
+    }
 }

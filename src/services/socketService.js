@@ -321,7 +321,6 @@ export const personalChats = async (id) => {
 export const UpdateUserActiveChatId = async (id, chatId) => {
   try {
     await User.update({ active_chat_id: chatId }, { where: { id } });
-    console.log("User active id changed to", chatId);
     logger.info(`User active id changed to ${chatId} for user ${id}`);
   } catch (err) {
     logger.error(`Failed to update active chat ID for user ${id}: ${err.message}`, {
@@ -372,10 +371,20 @@ export const sendChatMessage = async (id, chatId, message) => {
   }
 }
 
-export const readMessages = async (messageId) => {
+export const readMessages = async (id, messageId) => {
   try {
-    await Message.update({ status: 'read' }, { where: { id: messageId } });
-    return true;
+    // Only mark as read if the current user is the receiver of the message
+    await Message.update(
+      { status: 'read' },
+      {
+        where: {
+          id: messageId,
+          receiver_id: id  // Ensure only the receiver can mark as read
+        },
+      }
+    );
+    const message = await Message.findByPk(messageId, { raw: true });
+    return message;
   } catch (err) {
     logger.error(`Failed to read messages for user ${id}: ${err.message}`, {
       stack: err.stack,

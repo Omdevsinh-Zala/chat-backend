@@ -15,4 +15,6 @@ router.get('/settings', (req, res) => {
   return successResponse({res, data: null, message: "User settings fetched successfully.", statusCode: 200});
 });
 
+router.get('/', UserController.getUsers);
+
 export { router as userRouter };

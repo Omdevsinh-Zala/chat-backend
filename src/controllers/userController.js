@@ -18,3 +18,12 @@ export const update = async (req, res, next) => {
         next(err);
     }
 }
+
+export const getUsers = async (req, res, next) => {
+    try {
+        const users = await UserService.getUsers(req.query);
+        return successResponse({res, data: users, message: "Data retrieved successfully.", statusCode: 200});
+    } catch(err) {
+        next(err);
+    }
+}
