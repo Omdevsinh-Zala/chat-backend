@@ -145,91 +145,90 @@ export const recentlyMessagesUsers = async (id) => {
       return [];
     }
 
-    // Import sequelize instance for replacements
-    const { sequelize } = User;
-
-    // Use a more efficient query with subqueries and proper SQL injection prevention
-    const users = await User.findAll({
-      attributes: [
-        'id',
-        'username',
-        'first_name',
-        'last_name',
-        'avatar_url',
-        'is_active', // Include online status
-        // Subquery to get unread message count
-        [
-          sequelize.literal(`(
-            SELECT COUNT(*)
-            FROM messages
-            WHERE messages.sender_id = "User"."id"
-              AND messages.receiver_id = :userId
-              AND messages.status != 'read'
-              AND messages.deleted_at IS NULL
-          )`),
-          'unreadCount'
-        ],
-        // Subquery to get last message timestamp
-        [
-          sequelize.literal(`(
-            SELECT MAX(created_at)
-            FROM messages
-            WHERE (messages.sender_id = "User"."id" AND messages.receiver_id = :userId)
-               OR (messages.sender_id = :userId AND messages.receiver_id = "User"."id")
-          )`),
-          'lastMessageAt'
-        ],
-        // Subquery to get last message content preview
-        [
-          sequelize.literal(`(
-            SELECT content
-            FROM messages
-            WHERE (messages.sender_id = "User"."id" AND messages.receiver_id = :userId)
-               OR (messages.sender_id = :userId AND messages.receiver_id = "User"."id")
-            ORDER BY created_at DESC
-            LIMIT 1
-          )`),
-          'lastMessagePreview'
-        ]
-      ],
+    // 1. Fetch recent messages to identify recent contacts
+    const distinctUsers = new Map();
+    const recentMessages = await Message.findAll({
       where: {
-        id: {
-          [Op.ne]: id
-        },
-        // Only include users who have exchanged messages with current user
-        [Op.and]: [
-          sequelize.literal(`EXISTS (
-            SELECT 1 FROM messages 
-            WHERE (messages.sender_id = "User"."id" AND messages.receiver_id = :userId)
-               OR (messages.sender_id = :userId AND messages.receiver_id = "User"."id")
-          )`)
-        ]
+        [Op.or]: [
+          { sender_id: id },
+          { receiver_id: id }
+        ],
+        deleted_at: null
       },
-      replacements: { userId: id }, // Prevents SQL injection
-      order: [
-        [sequelize.literal('"lastMessageAt"'), 'DESC NULLS LAST']
-      ],
-      limit: 8,
-      raw: true, // More efficient - returns plain objects
-      nest: true
+      order: [['created_at', 'DESC']],
+      limit: 100 // Look at last 100 messages to find active chats
     });
 
-    // Format the response
-    return users.map(user => ({
-      id: user.id,
-      username: user.username,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      avatar_url: user.avatar_url,
-      is_active: user.is_active || false,
-      unreadCount: parseInt(user.unreadCount) || 0,
-      lastMessageAt: user.lastMessageAt,
-      lastMessagePreview: user.lastMessagePreview ?
-        (user.lastMessagePreview.length > 50
-          ? user.lastMessagePreview.substring(0, 50) + '...'
-          : user.lastMessagePreview)
-        : null
-    }));
+    // 2. Extract unique users (excluding self)
+    for (const msg of recentMessages) {
+      if (distinctUsers.size >= 8) break;
+
+      const otherId = msg.sender_id === id ? msg.receiver_id : msg.sender_id;
+      if (otherId === id) continue; // Exclude self (handled by personalChats)
+
+      if (!distinctUsers.has(otherId)) {
+        distinctUsers.set(otherId, {
+          lastMessage: msg
+        });
+      }
+    }
+
+    if (distinctUsers.size === 0) return [];
+
+    const userIds = Array.from(distinctUsers.keys());
+
+    // 3. Fetch User Details
+    const users = await User.findAll({
+      where: {
+        id: { [Op.in]: userIds }
+      },
+      attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url', 'is_active'],
+      raw: true
+    });
+
+    // 4. Fetch Unread Counts
+    const unreadCounts = await Message.count({
+      where: {
+        sender_id: { [Op.in]: userIds },
+        receiver_id: id,
+        status: { [Op.ne]: 'read' },
+        deleted_at: null
+      },
+      group: ['sender_id']
+    });
+
+    // Convert count array to map for easy lookup
+    // Sequelize group count returns array of { sender_id, count } or objects depending on version, usually safe to handle array
+    const unreadMap = {};
+    if (Array.isArray(unreadCounts)) {
+      unreadCounts.forEach(entry => {
+        // Entry might be { sender_id: '...', count: N } or { [group_key]: '...', count: N }
+        unreadMap[entry.sender_id] = entry.count;
+      });
+    }
+
+    // 5. Assemble Response (maintaining recent order)
+    return userIds.map(userId => {
+      const user = users.find(u => u.id === userId);
+      if (!user) return null;
+
+      const stats = distinctUsers.get(userId);
+      const lastMsg = stats.lastMessage;
+
+      return {
+        id: user.id,
+        username: user.username,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        avatar_url: user.avatar_url,
+        is_active: user.is_active || false,
+        unreadCount: parseInt(unreadMap[userId] || 0),
+        lastMessageAt: lastMsg.created_at,
+        lastMessagePreview: lastMsg.content ?
+          (lastMsg.content.length > 50 ? lastMsg.content.substring(0, 50) + '...' : lastMsg.content)
+          : null
+      };
+    }).filter(Boolean);
   } catch (err) {
     logger.error(`Failed to get recently messaged users for user ${id}: ${err.message}`, {
       stack: err.stack,
@@ -247,68 +246,9 @@ export const personalChats = async (id) => {
       return null;
     }
 
-    // Import sequelize instance for replacements
-    const { sequelize } = User;
-
-    // Fetch user's own data with self-message statistics
-    const user = await User.findOne({
-      attributes: [
-        'id',
-        'username',
-        'first_name',
-        'last_name',
-        'avatar_url',
-        'is_active',
-        // Subquery to get unread self-message count
-        [
-          sequelize.literal(`(
-            SELECT COUNT(*)
-            FROM messages
-            WHERE messages.sender_id = :userId
-              AND messages.receiver_id = :userId
-              AND messages.status != 'read'
-              AND messages.deleted_at IS NULL
-          )`),
-          'unreadCount'
-        ],
-        // Subquery to get last self-message timestamp
-        [
-          sequelize.literal(`(
-            SELECT MAX(created_at)
-            FROM messages
-            WHERE messages.sender_id = :userId
-              AND messages.receiver_id = :userId
-          )`),
-          'lastMessageAt'
-        ],
-        // Subquery to get last self-message preview
-        [
-          sequelize.literal(`(
-            SELECT content
-            FROM messages
-            WHERE messages.sender_id = :userId
-              AND messages.receiver_id = :userId
-            ORDER BY created_at DESC
-            LIMIT 1
-          )`),
-          'lastMessagePreview'
-        ],
-        // Subquery to get total self-message count
-        [
-          sequelize.literal(`(
-            SELECT COUNT(*)
-            FROM messages
-            WHERE messages.sender_id = :userId
-              AND messages.receiver_id = :userId
-              AND messages.deleted_at IS NULL
-          )`),
-          'totalMessages'
-        ]
-      ],
-      where: {
-        id: id
-      },
-      replacements: { userId: id },
+    // Fetch user details
+    const user = await User.findByPk(id, {
+      attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url', 'is_active'],
       raw: true
     });
 
@@ -316,6 +256,40 @@ export const personalChats = async (id) => {
       logger.error(`User not found for personalChats: ${id}`);
       return null;
     }
+
+    // Fetch stats in parallel
+    const [unreadCount, totalMessages, lastMessage] = await Promise.all([
+      Message.count({
+        where: {
+          sender_id: id,
+          receiver_id: id,
+          status: { [Op.ne]: 'read' },
+          deleted_at: null
+        }
+      }),
+      Message.count({
+        where: {
+          sender_id: id,
+          receiver_id: id,
+          deleted_at: null
+        }
+      }),
+      Message.findOne({
+        where: {
+          sender_id: id,
+          receiver_id: id
+        },
+        order: [['created_at', 'DESC']],
+        attributes: ['created_at', 'content'],
+        raw: true
+      })
+    ]);
+
+    // Add properties to user object to match previous structure
+    user.unreadCount = unreadCount;
+    user.totalMessages = totalMessages;
+    user.lastMessageAt = lastMessage ? lastMessage.created_at : null;
+    user.lastMessagePreview = lastMessage ? lastMessage.content : null;
 
     // Format response - always return user data even if no self-messages
     return {
@@ -341,5 +315,72 @@ export const personalChats = async (id) => {
       userId: id
     });
     return null;
+  }
+}
+
+export const UpdateUserActiveChatId = async (id, chatId) => {
+  try {
+    await User.update({ active_chat_id: chatId }, { where: { id } });
+    console.log("User active id changed to", chatId);
+    logger.info(`User active id changed to ${chatId} for user ${id}`);
+  } catch (err) {
+    logger.error(`Failed to update active chat ID for user ${id}: ${err.message}`, {
+      stack: err.stack,
+      userId: id
+    });
+    throw err;
+  }
+}
+
+export const getChatMessages = async (receiverId, senderId) => {
+  try {
+    const messages = await Message.findAll({
+      where: {
+        [Op.or]: [
+          { sender_id: senderId, receiver_id: receiverId },
+          { sender_id: receiverId, receiver_id: senderId }
+        ]
+      },
+      order: [['created_at', 'ASC']],
+      raw: true
+    });
+    return messages;
+  } catch (err) {
+    logger.error(`Failed to get chat messages for user ${senderId}: ${err.message}`, {
+      stack: err.stack,
+      userId: senderId
+    });
+    return [];
+  }
+}
+
+export const sendChatMessage = async (id, chatId, message) => {
+  try {
+    const messageData = await Message.create({
+      sender_id: id,
+      receiver_id: chatId,
+      content: message,
+      status: 'sent'
+    });
+    return messageData.toJSON();
+  } catch (err) {
+    logger.error(`Failed to send message to user ${id}: ${err.message}`, {
+      stack: err.stack,
+      userId: id
+    });
+    throw err;
+  }
+}
+
+export const readMessages = async (messageId) => {
+  try {
+    await Message.update({ status: 'read' }, { where: { id: messageId } });
+    return true;
+  } catch (err) {
+    logger.error(`Failed to read messages for user ${id}: ${err.message}`, {
+      stack: err.stack,
+      userId: id
+    });
+    return false;
   }
 }

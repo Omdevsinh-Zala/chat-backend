@@ -24,7 +24,7 @@ export const loginUser = async (data) => {
         where: {
             email: data.email,
         },
-        attributes: ['password', 'email', 'id', 'first_name', 'last_name', 'username'],
+        attributes: ['password', 'email', 'id', 'first_name', 'last_name', 'username', 'active_chat_id'],
     });
     if (!user) {
         throw new AppError("Invalid credentials.", 400);

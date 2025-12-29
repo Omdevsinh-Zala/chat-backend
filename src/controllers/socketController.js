@@ -5,6 +5,7 @@ export const setupSocketHandlers = (socketIO) => {
     // Set user as active on connect
     if (socket.user && socket.user.id) {
       await SocketService.updateUserActiveStatus(socket.user.id, true);
+      socket.join(socket.user.id);
     }
     // Emit a welcome event
     socket.emit("channels", { channels: await SocketService.userChannels(socket.user.id) });
@@ -12,6 +13,25 @@ export const setupSocketHandlers = (socketIO) => {
     socket.emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(socket.user.id) });
 
     socket.emit("personalChat", { chat: await SocketService.personalChats(socket.user.id) });
+
+    socket.on('chatChange', async ({ receiverId }) => {
+      const senderId = socket.user.id;
+      await SocketService.UpdateUserActiveChatId(senderId, receiverId);
+      socket.emit('chatMessages', { chat: await SocketService.getChatMessages(receiverId, senderId) });
+    })
+
+    socket.on('chatMessagesSend', async ({ receiverId, message }) => {
+      const senderId = socket.user.id;
+      const userMessage = await SocketService.sendChatMessage(senderId, receiverId, message);
+      socketIO.to(receiverId).emit('receiveChatMessage', { chat: userMessage });
+      socket.emit('receiveChatMessage', { chat: userMessage });
+      socket.emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(socket.user.id) });
+    })
+
+    socket.on('readMessage', async ({ messageId }) => {
+      await SocketService.readMessages(messageId);
+      socket.emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(socket.user.id) });
+    })
 
     // Join a room (channel)
     socket.on('join-room', async ({ channelId, userId }) => {
