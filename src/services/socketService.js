@@ -393,3 +393,18 @@ export const readMessages = async (id, messageId) => {
     return false;
   }
 }
+
+export const getReceiverData = async (id) => {
+  try {
+    const receiverData = await User.findByPk(id, {
+      attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url', 'full_name'],
+    });
+    return receiverData.toJSON();
+  } catch (err) {
+    logger.error(`Failed to get receiver data for user ${id}: ${err.message}`, {
+      stack: err.stack,
+      userId: id
+    });
+    return null;
+  }
+}

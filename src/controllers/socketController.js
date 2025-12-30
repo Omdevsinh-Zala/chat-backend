@@ -17,7 +17,7 @@ export const setupSocketHandlers = (socketIO) => {
     socket.on('chatChange', async ({ receiverId }) => {
       const senderId = socket.user.id;
       await SocketService.UpdateUserActiveChatId(senderId, receiverId);
-      socket.emit('chatMessages', { chat: await SocketService.getChatMessages(receiverId, senderId) });
+      socket.emit('chatMessages', { chat: await SocketService.getChatMessages(receiverId, senderId), receiverData: await SocketService.getReceiverData(receiverId) });
     })
 
     socket.on('chatMessagesSend', async ({ receiverId, message }) => {
@@ -25,7 +25,7 @@ export const setupSocketHandlers = (socketIO) => {
       const userMessage = await SocketService.sendChatMessage(senderId, receiverId, message);
       socketIO.to(receiverId).emit('receiveChatMessage', { chat: userMessage });
       socket.emit('receiveChatMessage', { chat: userMessage });
-      socket.emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(socket.user.id) });
+      socketIO.to(receiverId).emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(receiverId) });
     })
 
     socket.on('readMessage', async ({ receiverId, messageId }) => {

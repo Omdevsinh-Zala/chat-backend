@@ -24,33 +24,37 @@ export const updateUserData = async (id, updateUserData) => {
 }
 
 export const getUsers = async (query) => {
-    const limit = query.limit || config.pagination.limit;
-    const page = query.page || 1;
-    const offset = (page - 1) * limit;
-    let where = {};
-    if (query.search) {
-        where = {
-            [Op.or]: [
-                { first_name: { [Op.iLike]: `%${query.search}%` } },
-                { last_name: { [Op.iLike]: `%${query.search}%` } },
-            ],
+    try {
+        const limit = query.limit || config.pagination.limit;
+        const page = query.page || 1;
+        const offset = (page - 1) * limit;
+        let where = {};
+        if (query.search) {
+            where = {
+                [Op.or]: [
+                    { first_name: { [Op.iLike]: `%${query.search}%` } },
+                    { last_name: { [Op.iLike]: `%${query.search}%` } },
+                ],
+            }
         }
+        const { count, rows: rawData } = await User.findAndCountAll({
+            where,
+            attributes: {
+                exclude: ['bio', 'email', 'active_chat_id', 'is_email_verified', 'version', 'last_login', 'created_at', 'deleted_at', 'updated_at']
+            },
+            limit,
+            offset,
+            order: [['id', 'DESC']],
+        });
+    
+        const result = {
+            page: Number(page),
+            limit: Number(limit),
+            total: Number(count),
+            data: rawData.map((user) => user.toJSON()),
+        }
+        return result;
+    } catch (err) {
+        throw new AppError(err.message, 500);
     }
-    const { count, rows: rawData } = await User.findAndCountAll({
-        where,
-        attributes: {
-            exclude: ['bio', 'email', 'active_chat_id', 'is_email_verified', 'version', 'last_login', 'created_at', 'deleted_at', 'updated_at']
-        },
-        limit,
-        offset,
-        order: [['id', 'DESC']],
-    });
-
-    const result = {
-        page: Number(page),
-        limit: Number(limit),
-        total: Number(count),
-        data: rawData.map((user) => user.toJSON()),
-    }
-    return result;
 }
