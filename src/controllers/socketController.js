@@ -8,23 +8,23 @@ export const setupSocketHandlers = (socketIO) => {
       socket.join(socket.user.id);
     }
     // Emit a welcome event
-    socket.emit("channels", { channels: await SocketService.userChannels(socket.user.id) });
+    socketIO.to(socket.user.id).emit("channels", { channels: await SocketService.userChannels(socket.user.id) });
 
-    socket.emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(socket.user.id) });
+    socketIO.to(socket.user.id).emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(socket.user.id) });
 
-    socket.emit("personalChat", { chat: await SocketService.personalChats(socket.user.id) });
+    socketIO.to(socket.user.id).emit("personalChat", { chat: await SocketService.personalChats(socket.user.id) });
 
     socket.on('chatChange', async ({ receiverId }) => {
       const senderId = socket.user.id;
       await SocketService.UpdateUserActiveChatId(senderId, receiverId);
-      socket.emit('chatMessages', { chat: await SocketService.getChatMessages(receiverId, senderId), receiverData: await SocketService.getReceiverData(receiverId) });
+      socketIO.to(socket.user.id).emit('chatMessages', { chat: await SocketService.getChatMessages(receiverId, senderId), receiverData: await SocketService.getReceiverData(receiverId) });
     })
 
     socket.on('chatMessagesSend', async ({ receiverId, message }) => {
       const senderId = socket.user.id;
       const userMessage = await SocketService.sendChatMessage(senderId, receiverId, message);
       socketIO.to(receiverId).emit('receiveChatMessage', { chat: userMessage });
-      socket.emit('receiveChatMessage', { chat: userMessage });
+      socketIO.to(socket.user.id).emit('receiveChatMessage', { chat: userMessage });
       socketIO.to(receiverId).emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(receiverId) });
     })
 
@@ -34,13 +34,13 @@ export const setupSocketHandlers = (socketIO) => {
 
       if (userMessage) {
         // Emit to the receiver (current user who marked it as read)
-        socket.emit('receiveChatMessage', { chat: userMessage });
+        socketIO.to(receiverId).emit('receiveChatMessage', { chat: userMessage });
 
         // Emit to the sender so they see the status update
         socketIO.to(userMessage.sender_id).emit('receiveChatMessage', { chat: userMessage });
 
         // Update recently messaged users for the current user
-        socket.emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(currentUserId) });
+        socketIO.to(socket.user.id).emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(currentUserId) });
       }
     })
 

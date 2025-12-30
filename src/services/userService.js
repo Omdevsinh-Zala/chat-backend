@@ -34,6 +34,7 @@ export const getUsers = async (query) => {
                 [Op.or]: [
                     { first_name: { [Op.iLike]: `%${query.search}%` } },
                     { last_name: { [Op.iLike]: `%${query.search}%` } },
+                    { username: { [Op.iLike]: `%${query.search}%` } },
                 ],
             }
         }
@@ -46,7 +47,7 @@ export const getUsers = async (query) => {
             offset,
             order: [['id', 'DESC']],
         });
-    
+
         const result = {
             page: Number(page),
             limit: Number(limit),
