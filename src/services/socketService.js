@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ChannelMember, Channel, User, Message } from "../models/initModels.js";
 import logger from '../config/logger.js';
 import { Op } from 'sequelize';
+import { config } from '../config/app.js';
 
 export const joinChannel = async (socket, channelId, userId) => {
   if (!channelId || !userId) return socket.emit('error', { message: 'Missing channelId or userId' });
@@ -331,8 +332,11 @@ export const UpdateUserActiveChatId = async (id, chatId) => {
   }
 }
 
-export const getChatMessages = async (receiverId, senderId) => {
+export const getChatMessages = async (receiverId, senderId, offsets) => {
   try {
+    const limit = config.pagination.limit || 20;
+    const offset = offsets !== null ? offsets : 0;
+
     const messages = await Message.findAll({
       where: {
         [Op.or]: [
@@ -340,7 +344,9 @@ export const getChatMessages = async (receiverId, senderId) => {
           { sender_id: receiverId, receiver_id: senderId }
         ]
       },
-      order: [['created_at', 'ASC']],
+      order: [['created_at', 'DESC']],
+      limit,
+      offset,
       raw: true
     });
     return messages;
