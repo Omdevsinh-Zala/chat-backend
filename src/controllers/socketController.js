@@ -28,6 +28,12 @@ export const setupSocketHandlers = (socketIO) => {
       socketIO.to(receiverId).emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(receiverId) });
     })
 
+    socket.on('typing', async ({ receiverId, isTyping }) => {
+      const senderId = socket.user.id;
+      socketIO.to(receiverId).emit('typing', { senderId, isTyping });
+      socketIO.to(receiverId).emit('userTyping', { isTyping });
+    })
+
     socket.on('appendMessages', async ({ receiverId, offset }) => {
       const senderId = socket.user.id;
       const messages = await SocketService.getChatMessages(receiverId, senderId, offset);

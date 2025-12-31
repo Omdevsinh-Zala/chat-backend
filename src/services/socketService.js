@@ -224,6 +224,7 @@ export const recentlyMessagesUsers = async (id) => {
         avatar_url: user.avatar_url,
         is_active: user.is_active || false,
         unreadCount: parseInt(unreadMap[userId] || 0),
+        is_typing: false,
         lastMessageAt: lastMsg.created_at,
         lastMessagePreview: lastMsg.content ?
           (lastMsg.content.length > 50 ? lastMsg.content.substring(0, 50) + '...' : lastMsg.content)
