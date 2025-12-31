@@ -49,7 +49,7 @@ export const setupSocketHandlers = (socketIO) => {
         socketIO.to(receiverId).emit('receiveChatMessage', { chat: userMessage });
 
         // Emit to the sender so they see the status update
-        socketIO.to(userMessage.sender_id).emit('receiveChatMessage', { chat: userMessage });
+        socketIO.to(userMessage.messages[0].sender_id).emit('receiveChatMessage', { chat: userMessage });
 
         // Update recently messaged users for the current user
         socketIO.to(socket.user.id).emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(currentUserId) });

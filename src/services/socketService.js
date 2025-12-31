@@ -350,7 +350,18 @@ export const getChatMessages = async (receiverId, senderId, offsets) => {
       offset,
       raw: true
     });
-    return messages;
+    const monthGroup = messages.reduce((acc, item) => {
+      const date = new Date(item.created_at);
+      const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric', day: 'numeric' });
+      !(acc[monthYear]) ? acc[monthYear] = [] : null;
+      acc[monthYear].push(item);
+      return acc;
+    }, {});
+    const result = Object.entries(monthGroup).map(([monthYear, messages]) => ({
+      monthYear,
+      messages
+    }));
+    return result;
   } catch (err) {
     logger.error(`Failed to get chat messages for user ${senderId}: ${err.message}`, {
       stack: err.stack,
@@ -368,7 +379,13 @@ export const sendChatMessage = async (id, chatId, message) => {
       content: message,
       status: 'sent'
     });
-    return messageData.toJSON();
+    const date = new Date(messageData.created_at);
+    const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric', day: 'numeric' });
+    const result = {
+      monthYear,
+      messages: [messageData.toJSON()]
+    }
+    return result;
   } catch (err) {
     logger.error(`Failed to send message to user ${id}: ${err.message}`, {
       stack: err.stack,
@@ -391,7 +408,13 @@ export const readMessages = async (id, messageId) => {
       }
     );
     const message = await Message.findByPk(messageId, { raw: true });
-    return message;
+    const date = new Date(message.created_at);
+    const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric', day: 'numeric' });
+    const result = {
+      monthYear,
+      messages: [message]
+    }
+    return result;
   } catch (err) {
     logger.error(`Failed to read messages for user ${id}: ${err.message}`, {
       stack: err.stack,
