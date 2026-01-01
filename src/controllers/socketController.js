@@ -20,9 +20,9 @@ export const setupSocketHandlers = (socketIO) => {
       socketIO.to(socket.user.id).emit('chatMessages', { chat: await SocketService.getChatMessages(receiverId, senderId, null), receiverData: await SocketService.getReceiverData(receiverId) });
     })
 
-    socket.on('chatMessagesSend', async ({ receiverId, message }) => {
+    socket.on('chatMessagesSend', async ({ receiverId, message, messageType, attachments }) => {
       const senderId = socket.user.id;
-      const userMessage = await SocketService.sendChatMessage(senderId, receiverId, message);
+      const userMessage = await SocketService.sendChatMessage(senderId, receiverId, message, messageType, attachments);
       socketIO.to(receiverId).emit('receiveChatMessage', { chat: userMessage });
       socketIO.to(socket.user.id).emit('receiveChatMessage', { chat: userMessage });
       socketIO.to(receiverId).emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(receiverId) });

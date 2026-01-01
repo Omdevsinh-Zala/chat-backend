@@ -9,6 +9,7 @@ import { router } from './routes/auth.js';
 import { verifySocketToken } from './middlewares/verifyToken.js';
 import globalErrorHandler from './middlewares/globalErrorHandler.js';
 import { userRouter } from './routes/user.js';
+import { uploadRouter } from './routes/upload.js';
 import { setupSocketHandlers } from './controllers/socketController.js';
 import { config } from './config/app.js';
 
@@ -61,6 +62,7 @@ app.use('/public', express.static("public"));
 
 app.use('/api/v1/auth', router);
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/upload', uploadRouter);
 
 app.use(globalErrorHandler);
 

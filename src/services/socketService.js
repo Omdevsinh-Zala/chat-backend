@@ -371,13 +371,15 @@ export const getChatMessages = async (receiverId, senderId, offsets) => {
   }
 }
 
-export const sendChatMessage = async (id, chatId, message) => {
+export const sendChatMessage = async (id, chatId, message, messageType = 'text', attachments = null) => {
   try {
     const messageData = await Message.create({
       sender_id: id,
       receiver_id: chatId,
-      content: message,
-      status: 'sent'
+      content: message || '',
+      status: 'sent',
+      message_type: messageType,
+      attachments: attachments
     });
     const date = new Date(messageData.created_at);
     const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric', day: 'numeric' });
