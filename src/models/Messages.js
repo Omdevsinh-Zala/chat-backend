@@ -29,8 +29,9 @@ export const Message = sequelize.define("Message", {
   },
   message_type: {
     type: DataTypes.ENUM,
-    values: ["text", "image", "video", "file", "audio", "system"],
-    defaultValue: "text"
+    values: ["text", "image", "video", "file", "audio", "pdf", "system", "mixed"],
+    allowNull: true,
+    defaultValue: null
   },
   attachments: {
     type: DataTypes.JSONB,

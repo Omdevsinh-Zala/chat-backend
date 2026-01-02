@@ -371,7 +371,7 @@ export const getChatMessages = async (receiverId, senderId, offsets) => {
   }
 }
 
-export const sendChatMessage = async (id, chatId, message, messageType = 'text', attachments = null) => {
+export const sendChatMessage = async (id, chatId, message, messageType = null, attachments = null) => {
   try {
     const messageData = await Message.create({
       sender_id: id,

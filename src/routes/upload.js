@@ -1,9 +1,9 @@
 import express from 'express';
-import { uploadSingle, handleUpload } from '../controllers/uploadController.js';
+import { uploadFiles, handleUpload } from '../controllers/uploadController.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
 
 const router = express.Router();
 
-router.post('/', verifyToken, uploadSingle, handleUpload);
+router.post('/', verifyToken, uploadFiles, handleUpload);
 
 export const uploadRouter = router;

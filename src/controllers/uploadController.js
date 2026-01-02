@@ -19,16 +19,16 @@ const storage = multer.diskStorage({
 
 // File filter
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/') || 
-      file.mimetype.startsWith('video/') || 
-      file.mimetype === 'application/pdf') {
+  if (file.mimetype.startsWith('image/') ||
+    file.mimetype.startsWith('video/') ||
+    file.mimetype === 'application/pdf') {
     cb(null, true);
   } else {
     cb(new Error('Unsupported file type'), false);
   }
 };
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
@@ -36,31 +36,32 @@ const upload = multer({
   }
 });
 
-export const uploadSingle = upload.single('file');
+export const uploadFiles = upload.array('files');
 
 export const handleUpload = (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: 'No file uploaded' });
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ message: 'No files uploaded' });
   }
 
-  const { filename, mimetype, size } = req.file;
-  let fileType = 'file';
+  const uploadedFiles = req.files.map(file => {
+    const { filename, mimetype, size } = file;
+    let fileType = 'file';
 
-  if (mimetype.startsWith('image/')) fileType = 'image';
-  else if (mimetype.startsWith('video/')) fileType = 'video';
-  else if (mimetype === 'application/pdf') fileType = 'pdf';
+    if (mimetype.startsWith('image/')) fileType = 'image';
+    else if (mimetype.startsWith('video/')) fileType = 'video';
+    else if (mimetype === 'application/pdf') fileType = 'pdf';
 
-  // Construct public URL
-  const fileUrl = `uploads/${filename}`;
-
-  return res.status(200).json({
-    message: 'File uploaded successfully',
-    file: {
-      url: fileUrl,
+    return {
+      url: `uploads/${filename}`,
       type: fileType,
-      name: req.file.originalname,
+      name: file.originalname,
       size: size,
       mimeType: mimetype
-    }
+    };
+  });
+
+  return res.status(200).json({
+    message: 'Files uploaded successfully',
+    files: uploadedFiles
   });
 };
