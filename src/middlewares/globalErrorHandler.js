@@ -1,8 +1,9 @@
 import logger from "../config/logger.js";
 import AppError from "../utils/appError.js";
 import { errorResponse } from "../utils/response.js";
+import { MulterError } from "multer";
 
-const globalErrorHandler = async(err, req, res, _next) => {
+const globalErrorHandler = async (err, req, res, _next) => {
   const stack = err.stack || "";
 
   if (err instanceof AppError && err.isOperational) {
@@ -15,12 +16,10 @@ const globalErrorHandler = async(err, req, res, _next) => {
     const column = match?.[3] || "unknown";
 
     logger.error(
-      `[${req.method}] ${req.originalUrl} | IP: ${req.ip} -> Error Message: ${
-        err.message
-      } -> Error Detail: ${
-        typeof err.details === "object"
-          ? JSON.stringify(err.details)
-          : err.details
+      `[${req.method}] ${req.originalUrl} | IP: ${req.ip} -> Error Message: ${err.message
+      } -> Error Detail: ${typeof err.details === "object"
+        ? JSON.stringify(err.details)
+        : err.details
       } | File: ${filePath}:${line}:${column}.`
     );
 
@@ -35,6 +34,22 @@ const globalErrorHandler = async(err, req, res, _next) => {
   logger.error(
     `[${req.method}] ${req.originalUrl} | IP: ${req.ip} -> ${err.message}\n${stack}`
   );
+
+  if (err instanceof MulterError) {
+    let multerError = "Error uploading files.";
+    if (err.code === "LIMIT_FILE_SIZE") {
+      multerError = "File size exceeds the limit.";
+    }
+    if (err.code === "LIMIT_FILE_COUNT") {
+      multerError = "Too many files uploaded.";
+    }
+    return errorResponse({
+      res,
+      message: multerError,
+      statusCode: err.statusCode || 500,
+      details: multerError,
+    });
+  }
 
   return errorResponse({
     res,
