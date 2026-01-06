@@ -2,7 +2,7 @@ import { User } from "../models/initModels.js"
 import { Op } from "sequelize";
 import AppError from "../utils/appError.js";
 import { config } from "../config/app.js";
-import { Message } from "../models/initModels.js";
+import { Attachment } from "../models/initModels.js";
 import logger from "../config/logger.js";
 
 export const getUserData = async (id) => {
@@ -64,39 +64,34 @@ export const getUsers = async (query) => {
 
 export const getAllFiles = async (id, filters) => {
   try {
-    const limit = filters.limit || config.pagination.limit;
-    const page = filters.page || 1;
+    const limit = Number(filters.limit) || Number(config.pagination.limit) || 20;
+    const page = Number(filters.page) || 1;
     const offset = (page - 1) * limit;
-    const order = filters.order || 'DESC';
+    const order = filters.order?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
     const sortBy = filters.sortBy || 'created_at';
+    const fileType = filters.fileType || null;
     const whereClause = {
       [Op.or]: [
         { sender_id: id },
         { receiver_id: id }
       ],
-      status: 'read',
-      message_type: {
-        [Op.or]: ["image", "video", "file", "audio", "pdf", "system", "mixed"]
-      },
-      attachments: {
-        [Op.ne]: null
-      }
     }
 
-    const messages = await Message.findAll({
+    if (fileType) {
+      whereClause.file_type = fileType;
+    }
+
+    const { count, rows: attachments } = await Attachment.findAndCountAll({
       where: whereClause,
-      attributes: ['attachments'],
       order: [[sortBy, order]],
-      raw: true
+      raw: true,
+      limit,
+      offset
     });
 
-    const allAttachments = messages.flatMap(m => m.attachments || []);
-    const count = allAttachments.length;
-    const attachments = allAttachments.slice(offset, offset + limit);
-
     const result = {
-      page: Number(page),
-      limit: Number(limit),
+      page,
+      limit,
       total: Number(count),
       data: attachments
     }

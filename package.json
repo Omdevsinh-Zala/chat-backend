@@ -14,7 +14,8 @@
     "migrate": "npx sequelize-cli db:migrate",
     "undo": "npx sequelize-cli db:migrate:undo",
     "undo:all": "npx sequelize-cli db:migrate:undo:all",
-    "drop": "npx sequelize-cli db:drop"
+    "drop": "npx sequelize-cli db:drop",
+    "restart": "clear && npm run drop && npm run create && npm run migrate"
   },
   "repository": {
     "type": "git",

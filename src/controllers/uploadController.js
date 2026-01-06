@@ -15,11 +15,11 @@ export const handleUpload = (req, res) => {
       else if (mimetype === 'application/pdf') fileType = 'pdf';
 
       return {
-        url: `uploads/${filename}`,
-        type: fileType,
-        name: file.originalname,
-        size: size,
-        mimeType: mimetype
+        file_url: `uploads/${filename}`,
+        file_type: fileType,
+        file_name: file.originalname,
+        file_size: size,
+        mime_type: mimetype
       };
     });
 
