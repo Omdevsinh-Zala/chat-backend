@@ -54,7 +54,7 @@ export const setupSocketHandlers = (socketIO) => {
         // Update recently messaged users for the current user
         socketIO.to(socket.user.id).emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(currentUserId) });
       }
-    })
+    });
 
     // Join a room (channel)
     socket.on('join-room', async ({ channelId, userId }) => {

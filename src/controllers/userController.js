@@ -27,3 +27,12 @@ export const getUsers = async (req, res, next) => {
         next(err);
     }
 }
+
+export const getAllFiles = async (req, res, next) => {
+    try {
+        const files = await UserService.getAllFiles(req.user.id, req.query);
+        return successResponse({res, data: files, message: "Data retrieved successfully.", statusCode: 200});
+    } catch(err) {
+        next(err);
+    }
+}
