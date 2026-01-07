@@ -42,6 +42,7 @@ app.use(cors({
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
+  exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
 }));
 
 export const socketIO = io.of('/api/v1/socket');
@@ -54,7 +55,8 @@ socketIO.use((socket, next) => {
 setupSocketHandlers(socketIO);
 
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
