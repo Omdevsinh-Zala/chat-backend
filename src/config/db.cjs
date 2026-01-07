@@ -18,7 +18,7 @@ module.exports = {
     database: process.env.STAGE_DB_NAME,
     host: process.env.STAGE_DB_HOST,
     port: process.env.STAGE_DB_PORT,
-    dialect: process.env.PROD_DB_DIALECT,
+    dialect: process.env.STAGE_DB_DIALECT,
     logging: false,
   },
   production: {
