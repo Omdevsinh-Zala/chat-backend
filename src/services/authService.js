@@ -3,6 +3,7 @@ import { User, Setting } from "../models/initModels.js";
 import { generateToken } from "./tokenService.js";
 import AppError from "../utils/appError.js";
 import { randomImage } from "../utils/profileImagePicker.js";
+import { config } from "../config/app.js";
 
 export const registerUser = async (data, t) => {
     const user = await User.create({
@@ -46,14 +47,14 @@ export const loginUser = async (data) => {
 export const logoutUser = (res) => {
     return res.status(200).clearCookie('access_token', {
         httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
+        secure: config.env === 'development' ? false : true,
+        sameSite: config.env === 'development' ? 'lax' : 'none',
         maxAge: 3600000
     })
         .clearCookie('refresh_token', {
             httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
+            secure: config.env === 'development' ? false : true,
+            sameSite: config.env === 'development' ? 'lax' : 'none',
             maxAge: 24 * 3600000
         });
 }
