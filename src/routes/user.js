@@ -11,6 +11,8 @@ router.get('/profile', UserController.show);
 
 router.put('/profile', UserController.update);
 
+router.get('/files', UserController.getAllFiles);
+
 router.get('/settings', (req, res) => {
   return successResponse({res, data: null, message: "User settings fetched successfully.", statusCode: 200});
 });

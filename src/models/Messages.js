@@ -29,12 +29,9 @@ export const Message = sequelize.define("Message", {
   },
   message_type: {
     type: DataTypes.ENUM,
-    values: ["text", "image", "video", "file", "audio", "system"],
-    defaultValue: "text"
-  },
-  attachments: {
-    type: DataTypes.JSONB,
-    allowNull: true
+    values: ["text", "file", "system", "mixed"],
+    allowNull: true,
+    defaultValue: null
   },
   reply_to: {
     type: DataTypes.UUID,
@@ -69,4 +66,5 @@ Message.associate = (models) => {
   Message.belongsTo(models.User, { foreignKey: "sender_id", as: "Sender" });
   Message.belongsTo(models.Channel, { foreignKey: "channel_id" });
   Message.belongsTo(models.User, { foreignKey: "receiver_id", as: "Receiver" });
+  Message.hasMany(models.Attachment, { foreignKey: "message_id", as: "attachments" });
 };

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { ChannelMember, Channel, User, Message } from "../models/initModels.js";
+import { ChannelMember, Channel, User, Message, Attachment } from "../models/initModels.js";
 import logger from '../config/logger.js';
 import { Op } from 'sequelize';
 import { config } from '../config/app.js';
@@ -95,8 +95,13 @@ export const connectedUsersData = async (id) => {
               include: [
                 {
                   model: User,
-                  as: 'Sender', // Need to add this alias in Message model
+                  as: 'Sender',
                   attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
+                },
+                {
+                  model: Attachment,
+                  as: 'attachments',
+                  attributes: ['id', 'file_type', 'file_name', 'file_size', 'file_url', 'mime_type', 'created_at']
                 }
               ]
             }
@@ -112,6 +117,11 @@ export const connectedUsersData = async (id) => {
             {
               model: Channel,
               attributes: ['id', 'title', 'type']
+            },
+            {
+              model: Attachment,
+              as: 'attachments',
+              attributes: ['id', 'file_type', 'file_name', 'file_size', 'file_url', 'mime_type', 'created_at']
             }
           ],
           required: false
@@ -348,13 +358,19 @@ export const getChatMessages = async (receiverId, senderId, offsets) => {
       order: [['created_at', 'DESC']],
       limit,
       offset,
-      raw: true
+      include: [
+        {
+          model: Attachment,
+          as: 'attachments',
+          attributes: ['id', 'file_type', 'file_name', 'file_size', 'file_url', 'mime_type', 'created_at']
+        }
+      ],
     });
     const monthGroup = messages.reduce((acc, item) => {
       const date = new Date(item.created_at);
       const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric', day: 'numeric' });
       !(acc[monthYear]) ? acc[monthYear] = [] : null;
-      acc[monthYear].push(item);
+      acc[monthYear].push(item.toJSON());
       return acc;
     }, {});
     const result = Object.entries(monthGroup).map(([monthYear, messages]) => ({
@@ -371,14 +387,37 @@ export const getChatMessages = async (receiverId, senderId, offsets) => {
   }
 }
 
-export const sendChatMessage = async (id, chatId, message) => {
+export const sendChatMessage = async (id, chatId, message, messageType = null, attachments = null) => {
   try {
     const messageData = await Message.create({
       sender_id: id,
       receiver_id: chatId,
-      content: message,
-      status: 'sent'
+      content: message || '',
+      status: 'sent',
+      message_type: messageType,
     });
+
+    let attachmentsData = null;
+    if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+      const attachmentRows = attachments.map(att => ({
+        id: uuidv4(),
+        message_id: messageData.id,
+        sender_id: id,
+        receiver_id: chatId,
+        mime_type: att.mime_type,
+        file_type: att.file_type || (messageType !== 'mixed' ? messageType : null),
+        file_url: att.file_url,
+        file_name: att.file_name,
+        file_size: att.file_size,
+        metadata: att.metadata || {}
+      }));
+      await Attachment.bulkCreate(attachmentRows);
+      attachmentsData = attachmentRows;
+    }
+
+    if (attachmentsData && attachmentsData.length > 0) {
+      messageData.setDataValue('attachments', attachmentsData);
+    }
     const date = new Date(messageData.created_at);
     const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric', day: 'numeric' });
     const result = {
@@ -407,12 +446,23 @@ export const readMessages = async (id, messageId) => {
         },
       }
     );
-    const message = await Message.findByPk(messageId, { raw: true });
+    const message = await Message.findByPk(messageId, {
+      include: [
+        {
+          model: Attachment,
+          as: 'attachments',
+          attributes: ['id', 'file_type', 'file_name', 'file_size', 'file_url', 'mime_type', 'created_at']
+        }
+      ]
+    });
+
+    if (!message) return false;
+
     const date = new Date(message.created_at);
     const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric', day: 'numeric' });
     const result = {
       monthYear,
-      messages: [message]
+      messages: [message.toJSON()]
     }
     return result;
   } catch (err) {

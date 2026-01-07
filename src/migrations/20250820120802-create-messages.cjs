@@ -41,12 +41,8 @@ module.exports = {
       },
       message_type: {
         type: Sequelize.ENUM,
-        values: ["text", "image", "video", "file", "audio", "system"],
+        values: ["text", "file", "system", "mixed"],
         defaultValue: "text"
-      },
-      attachments: {
-        type: Sequelize.JSONB,
-        allowNull: true
       },
       reply_to: {
         type: Sequelize.UUID,

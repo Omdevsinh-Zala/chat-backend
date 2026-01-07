@@ -1,7 +1,3 @@
-// src/models/initModels.js
-// This file imports all models (which depend on sequelize from index.js)
-// and initializes their associations
-
 import { User } from "./User.js";
 import { Channel } from "./Channels.js";
 import { ChannelMember } from "./ChannelMembers.js";
@@ -9,6 +5,7 @@ import { Message } from "./Messages.js";
 import { Notification } from "./Notifications.js";
 import { NotificationPreference } from "./NotificationPreferences.js";
 import { Setting } from "./Settings.js";
+import { Attachment } from "./Attachments.js";
 
 // Create models object
 const models = {
@@ -18,7 +15,8 @@ const models = {
     Message,
     Notification,
     NotificationPreference,
-    Setting
+    Setting,
+    Attachment
 };
 
 // Initialize associations
@@ -29,4 +27,4 @@ Object.keys(models).forEach(modelName => {
 });
 
 // Export all models with associations initialized
-export { User, Channel, ChannelMember, Message, Notification, NotificationPreference, Setting };
+export { User, Channel, ChannelMember, Message, Notification, NotificationPreference, Setting, Attachment };

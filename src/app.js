@@ -9,6 +9,7 @@ import { router } from './routes/auth.js';
 import { verifySocketToken } from './middlewares/verifyToken.js';
 import globalErrorHandler from './middlewares/globalErrorHandler.js';
 import { userRouter } from './routes/user.js';
+import { uploadRouter } from './routes/upload.js';
 import { setupSocketHandlers } from './controllers/socketController.js';
 import { config } from './config/app.js';
 
@@ -41,6 +42,7 @@ app.use(cors({
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
+  exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
 }));
 
 export const socketIO = io.of('/api/v1/socket');
@@ -53,7 +55,8 @@ socketIO.use((socket, next) => {
 setupSocketHandlers(socketIO);
 
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -61,6 +64,7 @@ app.use('/public', express.static("public"));
 
 app.use('/api/v1/auth', router);
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/upload', uploadRouter);
 
 app.use(globalErrorHandler);
 
