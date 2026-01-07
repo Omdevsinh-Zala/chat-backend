@@ -5,8 +5,6 @@ import * as configFile from "../config/db.cjs";
 
 const configs = configFile.default[config.env || "development"];
 
-console.log(configs);
-
 // Create and export sequelize FIRST, before importing any models
 export const sequelize = new Sequelize(
   configs.database,
