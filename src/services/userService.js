@@ -1,9 +1,10 @@
-import { User } from "../models/initModels.js"
+import { User, Channel, ChannelMember } from "../models/initModels.js"
 import { Op } from "sequelize";
 import AppError from "../utils/appError.js";
 import { config } from "../config/app.js";
 import { Attachment } from "../models/initModels.js";
 import logger from "../config/logger.js";
+import { randomImage } from "../utils/profileImagePicker.js";
 
 export const getUserData = async (id) => {
   const rawData = await User.findByPk(id);
@@ -98,6 +99,32 @@ export const getAllFiles = async (id, filters) => {
     return result;
   } catch (err) {
     logger.error(`Failed to get all files: ${err.message}`, {
+      stack: err.stack,
+    });
+    throw new AppError(err.message, 500);
+  }
+}
+
+export const createChannel = async (id, data) => {
+  try {
+    const channel = await Channel.create({
+      title: data.title,
+      slug: data.title.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '') + '-' + Math.random().toString(36).substring(2, 7),
+      owner_id: id,
+      avatar_url: randomImage(),
+      topic: data.topic,
+      is_private: data.isPrivate,
+      description: data.description,
+    });
+    await ChannelMember.create({
+      channel_id: channel.toJSON().id,
+      user_id: id,
+      role: 'owner',
+      invite_by: null
+    });
+    return true;
+  } catch (err) {
+    logger.error(`Failed to create channel: ${err.message}`, {
       stack: err.stack,
     });
     throw new AppError(err.message, 500);

@@ -31,7 +31,8 @@ export const ChannelMember = sequelize.define("ChannelMember", {
     defaultValue: false
   },
   mute_until: {
-    type: DataTypes.DATE
+    type: DataTypes.DATE,
+    allowNull: true
   },
   joined_at: {
     allowNull: false,

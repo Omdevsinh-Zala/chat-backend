@@ -145,7 +145,11 @@ export const userChannels = async (id) => {
       }
     ]
   });
-  return channels.map(channel => channel.toJSON());
+  return channels.map(channel => {
+    const plainChannel = channel.toJSON();
+    const { Members, admin_ids, only_admin_can_message, owner_id, status, updated_at, updatedAt, version, topic, deletedAt, description, ...rest } = plainChannel;
+    return rest;
+  });
 }
 
 export const recentlyMessagesUsers = async (id) => {
