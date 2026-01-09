@@ -45,3 +45,30 @@ export const createChannel = async (req, res, next) => {
         next(err);
     }
 }
+
+export const getChannelData = async (req, res, next) => {
+    try {
+        const channelData = await UserService.getChannelData(req.user.id, req.params.id);
+        return successResponse({ res, data: channelData, message: "Data retrieved successfully.", statusCode: 200 });
+    } catch (err) {
+        next(err);
+    }
+}
+
+export const getAllChannels = async (req, res, next) => {
+    try {
+        const channels = await UserService.getAllChannels(req.user.id, req.query);
+        return successResponse({ res, data: channels, message: "Data retrieved successfully.", statusCode: 200 });
+    } catch (err) {
+        next(err);
+    }
+}
+
+export const joinChannel = async (req, res, next) => {
+    try {
+        const isChannelJoined = await UserService.joinChannel(req.user.id, req.body);
+        return successResponse({ res, data: isChannelJoined, message: "Channel joined successfully.", statusCode: 200 });
+    } catch (err) {
+        next(err);
+    }
+}

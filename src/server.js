@@ -42,7 +42,7 @@ try {
   app = server.listen(config.port || 5002, () => {
     logger.info(`Server running in ${config.env} on port ${config.port}`);
   });
-} catch(error) {
+} catch (error) {
   logger.error("Error connecting to database:", error.message);
   logger.error(error.stack);
 }

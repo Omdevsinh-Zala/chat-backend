@@ -9,25 +9,52 @@ export const setupSocketHandlers = (socketIO) => {
       socket.join(socket.user.id);
     }
     // Emit a welcome event
-    socketIO.to(socket.user.id).emit("channels", { channels: await SocketService.userChannels(socket.user.id) });
+    socketIO.to(socket.user.id).emit("channels", { channels: await ChannelSocketService.userChannels(socket.user.id) });
 
     socketIO.to(socket.user.id).emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(socket.user.id) });
 
     socketIO.to(socket.user.id).emit("personalChat", { chat: await SocketService.personalChats(socket.user.id) });
 
+    // For Channels communication with socket
     socket.on('channelCreated', async () => {
-      socketIO.to(socket.user.id).emit("channels", { channels: await SocketService.userChannels(socket.user.id) });
+      socketIO.to(socket.user.id).emit("channels", { channels: await ChannelSocketService.userChannels(socket.user.id) });
     })
 
     socket.on('channelChatChange', async ({ channelId }) => {
       const senderId = socket.user.id;
-      await SocketService.UpdateUserActiveChatId(senderId, channelId);
-      socketIO.to(socket.user.id).emit('channelChatMessages', { chat: await ChannelSocketService.getChannelChatMessages(channelId, null), channelData: await ChannelSocketService.getChannelData(channelId) });
+      await SocketService.UpdateUserActiveChatId(senderId, channelId, true);
+      socketIO.to(socket.user.id).emit('channelChatMessages', { chat: await ChannelSocketService.getChannelChatMessages(senderId, channelId, null), channelData: await ChannelSocketService.getChannelData(channelId) });
     })
 
+    socket.on('channelMemberTyping', async ({ channelId, isTyping }) => {
+      const senderId = socket.user.id;
+      socketIO.to(channelId).emit('channelMemberTyping', { senderId, isTyping });
+    })
+
+    socket.on('channelChatMessagesSend', async ({ channelId, message, messageType, attachments }) => {
+      const senderId = socket.user.id;
+      const userMessage = await ChannelSocketService.sendChannelChatMessage(senderId, channelId, message, messageType, attachments);
+      socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: userMessage });
+      socketIO.to(socket.user.id).emit('receiveChannelChatMessage', { chat: userMessage });
+    })
+
+    socket.on('appendChannelMessages', async ({ channelId, offset }) => {
+      const senderId = socket.user.id;
+      const messages = await ChannelSocketService.getChannelChatMessages(senderId, channelId, offset);
+      socketIO.to(socket.user.id).emit('appendedChannelMessages', { chat: messages });
+    })
+
+    socket.on('markChannelRead', async ({ channelId }) => {
+      const userId = socket.user.id;
+      await ChannelSocketService.updateMemberReadAt(userId, channelId);
+      // Notify other members that this user has read the messages
+      socket.to(channelId).emit('channelReadUpdated', { channelId, userId, lastReadAt: new Date() });
+    })
+
+    // For User communication with socket
     socket.on('chatChange', async ({ receiverId }) => {
       const senderId = socket.user.id;
-      await SocketService.UpdateUserActiveChatId(senderId, receiverId);
+      await SocketService.UpdateUserActiveChatId(senderId, receiverId, false);
       socketIO.to(socket.user.id).emit('chatMessages', { chat: await SocketService.getChatMessages(receiverId, senderId, null), receiverData: await SocketService.getReceiverData(receiverId) });
     })
 

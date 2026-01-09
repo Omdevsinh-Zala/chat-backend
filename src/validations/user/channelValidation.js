@@ -25,7 +25,7 @@ export const createChannelValidators = Joi.object({
         }),
     description: Joi.string()
         .min(3)
-        .max(100)
+        .max(1000)
         .regex(/^[a-zA-Z0-9\s_.-]+$/)
         .required()
         .messages({
@@ -37,4 +37,24 @@ export const createChannelValidators = Joi.object({
     isPrivate: Joi.boolean().required().messages({
         'any.required': 'Private option is required.',
     }),
-})
+});
+
+export const getChannelDataValidators = Joi.object({
+    id: Joi.string().uuid().required().messages({
+        'string.uuid': 'Channel ID must be a valid UUID.',
+        'string.base': 'Channel ID must be a string.',
+        'any.required': 'Channel ID is required.',
+    }),
+});
+
+export const joinChannelValidators = Joi.object({
+    channelId: Joi.string().uuid().required().messages({
+        'string.uuid': 'Channel ID must be a valid UUID.',
+        'string.base': 'Channel ID must be a string.',
+        'any.required': 'Channel ID is required.',
+    }),
+    inviteBy: Joi.string().uuid().allow(null).messages({
+        'string.uuid': 'Invite by must be a valid UUID.',
+        'string.base': 'Invite by must be a string.',
+    }),
+});

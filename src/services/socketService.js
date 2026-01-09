@@ -135,23 +135,6 @@ export const connectedUsersData = async (id) => {
   }
 }
 
-export const userChannels = async (id) => {
-  const channels = await Channel.findAll({
-    include: [
-      {
-        model: User,
-        as: 'Members',
-        where: { id }
-      }
-    ]
-  });
-  return channels.map(channel => {
-    const plainChannel = channel.toJSON();
-    const { Members, admin_ids, only_admin_can_message, owner_id, status, updated_at, updatedAt, version, topic, deletedAt, description, ...rest } = plainChannel;
-    return rest;
-  });
-}
-
 export const recentlyMessagesUsers = async (id) => {
   try {
     // Input validation
@@ -334,9 +317,9 @@ export const personalChats = async (id) => {
   }
 }
 
-export const UpdateUserActiveChatId = async (id, chatId) => {
+export const UpdateUserActiveChatId = async (id, chatId, isChannel) => {
   try {
-    await User.update({ active_chat_id: chatId }, { where: { id } });
+    await User.update({ active_chat_id: chatId, is_last_active_chat_channel: isChannel }, { where: { id } });
     logger.info(`User active id changed to ${chatId} for user ${id}`);
   } catch (err) {
     logger.error(`Failed to update active chat ID for user ${id}: ${err.message}`, {
