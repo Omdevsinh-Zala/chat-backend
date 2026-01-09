@@ -100,6 +100,10 @@ export const User = sequelize.define("User", {
     type: DataTypes.UUID,
     allowNull: true
   },
+  is_last_active_chat_channel: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false
+  },
 },
   {
     timestamps: true,

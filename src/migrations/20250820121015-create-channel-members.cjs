@@ -36,7 +36,7 @@ module.exports = {
         defaultValue: false
       },
       mute_until: {
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
       },
       joined_at: {
         allowNull: false,

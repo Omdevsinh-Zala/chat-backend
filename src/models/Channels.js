@@ -42,11 +42,6 @@ export const Channel = sequelize.define("Channel", {
     type: DataTypes.UUID,
     allowNull: false
   },
-  type: {
-    type: DataTypes.ENUM,
-    values: ["public", "private", "dm", "group", "announcement"],
-    defaultValue: "public"
-  },
   admin_ids: {
     type: DataTypes.ARRAY(DataTypes.UUID),
     allowNull: true,
@@ -57,6 +52,11 @@ export const Channel = sequelize.define("Channel", {
     type: DataTypes.ENUM,
     values: ["active", "archived", "locked", "deleted"],
     defaultValue: "active"
+  },
+  only_admin_can_message: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false
   }
 }, {
   timestamps: true,
@@ -67,8 +67,7 @@ export const Channel = sequelize.define("Channel", {
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   indexes: [
-    { fields: ['owner_id'] },
-    { fields: ['type'] }
+    { fields: ['owner_id'] }
   ]
 });
 

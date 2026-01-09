@@ -31,7 +31,8 @@ export const ChannelMember = sequelize.define("ChannelMember", {
     defaultValue: false
   },
   mute_until: {
-    type: DataTypes.DATE
+    type: DataTypes.DATE,
+    allowNull: true
   },
   joined_at: {
     allowNull: false,
@@ -57,8 +58,12 @@ export const ChannelMember = sequelize.define("ChannelMember", {
   custom_data: {
     type: DataTypes.JSONB,
     allowNull: true
+  },
+  last_read_at: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
-},{
+}, {
   timestamps: true,
   paranoid: true,
   version: true,

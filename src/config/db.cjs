@@ -12,6 +12,15 @@ module.exports = {
     dialect: process.env.DEV_DB_DIALECT,
     logging: false,
   },
+  stage: {
+    username: process.env.STAGE_DB_USER,
+    password: process.env.STAGE_DB_PASSWORD,
+    database: process.env.STAGE_DB_NAME,
+    host: process.env.STAGE_DB_HOST,
+    port: process.env.STAGE_DB_PORT,
+    dialect: process.env.STAGE_DB_DIALECT,
+    logging: false,
+  },
   production: {
     username: process.env.PROD_DB_USER,
     password: process.env.PROD_DB_PASSWORD,
