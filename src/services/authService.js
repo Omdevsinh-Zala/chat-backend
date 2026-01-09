@@ -13,6 +13,7 @@ export const registerUser = async (data, t) => {
         email: data.email,
         password: data.password,
         avatar_url: randomImage(),
+        is_last_active_chat_channel: false,
     }, { transaction: t });
 
     await Setting.create({

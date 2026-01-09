@@ -1,9 +1,10 @@
-import { User } from "../models/initModels.js"
+import { User, Channel, ChannelMember } from "../models/initModels.js"
 import { Op } from "sequelize";
 import AppError from "../utils/appError.js";
 import { config } from "../config/app.js";
 import { Attachment } from "../models/initModels.js";
 import logger from "../config/logger.js";
+import { randomImage } from "../utils/profileImagePicker.js";
 
 export const getUserData = async (id) => {
   const rawData = await User.findByPk(id);
@@ -98,6 +99,149 @@ export const getAllFiles = async (id, filters) => {
     return result;
   } catch (err) {
     logger.error(`Failed to get all files: ${err.message}`, {
+      stack: err.stack,
+    });
+    throw new AppError(err.message, 500);
+  }
+}
+
+export const createChannel = async (id, data) => {
+  try {
+    const channel = await Channel.create({
+      title: data.title,
+      slug: data.title.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '') + '-' + Math.random().toString(36).substring(2, 7),
+      owner_id: id,
+      avatar_url: randomImage(),
+      topic: data.topic,
+      is_private: data.isPrivate,
+      description: data.description,
+    });
+    await ChannelMember.create({
+      channel_id: channel.toJSON().id,
+      user_id: id,
+      role: 'owner',
+      invite_by: null
+    });
+    return true;
+  } catch (err) {
+    logger.error(`Failed to create channel: ${err.message}`, {
+      stack: err.stack,
+    });
+    throw new AppError(err.message, 500);
+  }
+}
+
+export const getAllChannels = async (id, filters) => {
+  try {
+    const limit = Number(filters.limit) || Number(config.pagination.limit) || 20;
+    const page = Number(filters.page) || 1;
+    const offset = (page - 1) * limit;
+    const order = filters.order?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const sortBy = filters.sortBy || 'created_at';
+    const whereClause = {
+      is_private: false,
+    }
+
+    if(filters.search){
+      whereClause[Op.or] = [
+        { title: { [Op.iLike]: `%${filters.search}%` } },
+      ]
+    }
+
+    const { count, rows: channels } = await Channel.findAndCountAll({
+      where: whereClause,
+      order: [[sortBy, order]],
+      include: [
+        {
+          model: ChannelMember,
+          where: { user_id: id },
+          attributes: ['user_id'],
+          required: false,
+        }
+      ],
+      limit,
+      offset
+    });
+
+    const rawChannels = channels.map((channel) => {
+      const data = channel.toJSON();
+      delete data.status;
+      delete data.last_message_at;
+      delete data.version;
+      delete data.updated_at;
+      delete data.deletedAt;
+      delete data.admin_ids;
+      data.isMember = data.ChannelMembers.length > 0;
+      delete data.ChannelMembers;
+      return data;
+    });
+
+    const result = {
+      page,
+      limit,
+      total: Number(count),
+      data: rawChannels
+    }
+    return result;
+  } catch (err) {
+    logger.error(`Failed to get all channels: ${err.message}`, {
+      stack: err.stack,
+    });
+    throw new AppError(err.message, 500);
+  }
+}
+
+export const getChannelData = async (id, channelId) => {
+  try {
+    const channelData = await Channel.findByPk(channelId, {
+      include: [
+        {
+          model: ChannelMember,
+          where: { user_id: id },
+          attributes: ['user_id'],
+          required: false,
+          include: [
+            {
+              model: User,
+              attributes: ['id', 'first_name', 'last_name', 'username', 'avatar_url', 'is_active'],
+            }
+          ]
+        }
+      ],
+    });
+
+    if (!channelData) throw new AppError("Channel not found.", 404);
+
+    const channel = channelData.toJSON();
+    if(channel.ChannelMembers.length > 0){
+      channel.isMember = true;
+      return channel;
+    } else {
+      delete channel.ChannelMembers;
+      channel.isMember = false;
+      return channel;
+    }
+  } catch(err) {
+    logger.error(`Failed to get channel info: ${err.message}`, {
+      stack: err.stack,
+    });
+    throw new AppError(err.message, 500);
+  }
+}
+
+export const joinChannel = async (id, data) => {
+  try {
+    const channelData = await Channel.findByPk(data.channelId);
+    if (!channelData) throw new AppError("Channel not found.", 404);
+    const channelMember = await ChannelMember.create({
+      channel_id: data.channelId,
+      user_id: id,
+      role: 'member',
+      invite_by: data.inviteBy
+    });
+    return true;
+  } catch(err) {
+    logger.error(`Failed to join channel: ${err.message}`, {
       stack: err.stack,
     });
     throw new AppError(err.message, 500);
