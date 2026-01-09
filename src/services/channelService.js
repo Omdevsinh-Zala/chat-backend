@@ -1,5 +1,6 @@
 import { config } from "../config/app.js";
 import { Channel, Attachment, Message, ChannelMember, User } from "../models/initModels.js";
+import { Op } from "sequelize";
 import logger from "../config/logger.js";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -13,8 +14,26 @@ export const userChannels = async (id) => {
       }
     ]
   });
-  return channels.map(channel => {
+
+  const channelsData = await Promise.all(channels.map(async (channel) => {
     const plainChannel = channel.toJSON();
+    const member = plainChannel.Members[0]; // Since we filtered by user id, this is the current user's member record
+    const lastReadAt = member.ChannelMember.last_read_at;
+
+    const unreadCount = await Message.count({
+      where: {
+        channel_id: channel.id,
+        created_at: {
+          [Op.gt]: lastReadAt || new Date(0) // If never read, count all (or from beginning of time)
+        },
+        sender_id: {
+          [Op.ne]: id // Don't count own messages
+        }
+      }
+    });
+
+    plainChannel.unread_count = unreadCount;
+
     delete plainChannel.Members;
     delete plainChannel.admin_ids;
     delete plainChannel.only_admin_can_message;
@@ -27,7 +46,9 @@ export const userChannels = async (id) => {
     delete plainChannel.deletedAt;
     delete plainChannel.description;
     return plainChannel;
-  });
+  }));
+
+  return channelsData;
 }
 
 export const getChannelChatMessages = async (senderId, channelId, offsets) => {
@@ -142,7 +163,14 @@ export const sendChannelChatMessage = async (id, channelId, message, messageType
       monthYear,
       messages: [messageData.toJSON()]
     }
-    return result;
+
+    const channelMembers = await ChannelMember.findAll({
+      where: { channel_id: channelId },
+      attributes: ['user_id'],
+      raw: true,
+    });
+
+    return { result, userIds: channelMembers.map(member => member.user_id) };
   } catch (err) {
     logger.error(`Failed to send message in channel ${id}: ${err.message}`, {
       stack: err.stack,

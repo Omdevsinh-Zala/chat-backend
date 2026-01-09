@@ -33,9 +33,14 @@ export const setupSocketHandlers = (socketIO) => {
 
     socket.on('channelChatMessagesSend', async ({ channelId, message, messageType, attachments }) => {
       const senderId = socket.user.id;
-      const userMessage = await ChannelSocketService.sendChannelChatMessage(senderId, channelId, message, messageType, attachments);
-      socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: userMessage });
-      socketIO.to(socket.user.id).emit('receiveChannelChatMessage', { chat: userMessage });
+      const {result, userIds} = await ChannelSocketService.sendChannelChatMessage(senderId, channelId, message, messageType, attachments);
+      socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: result });
+      socketIO.to(socket.user.id).emit('receiveChannelChatMessage', { chat: result });
+      userIds.forEach(userId => {
+        if(userId !== senderId){
+          socketIO.to(userId).emit('receiveChannelChatMessage', { chat: result });
+        }
+      });
     })
 
     socket.on('appendChannelMessages', async ({ channelId, offset }) => {
