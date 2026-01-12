@@ -26,7 +26,7 @@ export const createChannelValidators = Joi.object({
     description: Joi.string()
         .min(3)
         .max(1000)
-        .regex(/^[a-zA-Z0-9\s_.-]+$/)
+        .regex(/^[a-zA-Z0-9\s_,.-]+$/)
         .required()
         .messages({
             'string.pattern.base': 'Description can only contain letters, numbers, spaces, underscores, and hyphens.',
