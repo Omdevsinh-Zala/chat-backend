@@ -197,13 +197,12 @@ export const getChannelData = async (id, channelId) => {
       include: [
         {
           model: ChannelMember,
-          where: { user_id: id },
-          attributes: ['user_id'],
+          attributes: ['user_id', 'role'],
           required: false,
           include: [
             {
               model: User,
-              attributes: ['id', 'first_name', 'last_name', 'username', 'avatar_url', 'is_active'],
+              attributes: ['id', 'first_name', 'last_name', 'username', 'avatar_url', 'is_active', 'full_name'],
             }
           ]
         }
@@ -213,8 +212,15 @@ export const getChannelData = async (id, channelId) => {
     if (!channelData) throw new AppError("Channel not found.", 404);
 
     const channel = channelData.toJSON();
-    if(channel.ChannelMembers.length > 0){
+    const isMember = channel.ChannelMembers.find((user) => user.user_id === id);
+    if(isMember){
       channel.isMember = true;
+      let members = [];
+      for(let i = 0; i < 10; i++) {
+        let some = channel.ChannelMembers.map(({role, User}) => ({ role, ...User }));
+        members.push(...some);
+      }
+      channel.ChannelMembers = members;
       return channel;
     } else {
       delete channel.ChannelMembers;
