@@ -233,7 +233,7 @@ export const joinChannel = async (id, data) => {
   try {
     const channelData = await Channel.findByPk(data.channelId);
     if (!channelData) throw new AppError("Channel not found.", 404);
-    const channelMember = await ChannelMember.create({
+    await ChannelMember.create({
       channel_id: data.channelId,
       user_id: id,
       role: 'member',
