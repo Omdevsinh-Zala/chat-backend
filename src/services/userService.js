@@ -1,4 +1,4 @@
-import { User, Channel, ChannelMember } from "../models/initModels.js"
+import { User, Channel, ChannelMember, Message } from "../models/initModels.js"
 import { Op } from "sequelize";
 import AppError from "../utils/appError.js";
 import { config } from "../config/app.js";
@@ -7,15 +7,41 @@ import logger from "../config/logger.js";
 import { randomImage } from "../utils/profileImagePicker.js";
 
 export const getUserData = async (id) => {
-  const rawData = await User.findByPk(id);
-  if (!rawData) throw new AppError("User not found.", 404);
-  const userData = rawData.toJSON();
+  try {
+    const rawData = await User.findByPk(id);
+    if (!rawData) throw new AppError("User not found.", 404);
+    const userData = rawData.toJSON();
 
-  if (userData.is_blocked) {
-    throw new AppError("Your account has been blocked. Please contact support.", 403);
+    if (userData.is_blocked) {
+      throw new AppError("Your account has been blocked. Please contact support.", 403);
+    }
+
+    return userData;
+  } catch (err) {
+    logger.error(`Failed to get user data: ${err.message}`, {
+      stack: err.stack,
+    });
+    throw new AppError(err.message, 500);
   }
+}
 
-  return userData;
+export const getProfileData = async (id) => {
+  try {
+    const rawData = await User.findByPk(id, {
+      attributes: {
+        exclude: ['active_chat_id', 'is_last_active_chat_channel']
+      }
+    });
+    if (!rawData) throw new AppError("User not found.", 404);
+    const userData = rawData.toJSON();
+
+    return userData;
+  } catch (err) {
+    logger.error(`Failed to get user data: ${err.message}`, {
+      stack: err.stack,
+    });
+    throw new AppError(err.message, 500);
+  }
 }
 
 export const updateUserData = async (id, updateUserData) => {
@@ -122,6 +148,12 @@ export const createChannel = async (id, data) => {
       role: 'owner',
       invite_by: null
     });
+    await Message.create({
+      sender_id: id,
+      channel_id: channel.toJSON().id,
+      content: `${data.full_name} created the channel '${data.title}'.`,
+      message_type: 'system',
+    });
     return true;
   } catch (err) {
     logger.error(`Failed to create channel: ${err.message}`, {
@@ -142,7 +174,7 @@ export const getAllChannels = async (id, filters) => {
       is_private: false,
     }
 
-    if(filters.search){
+    if (filters.search) {
       whereClause[Op.or] = [
         { title: { [Op.iLike]: `%${filters.search}%` } },
       ]
@@ -213,41 +245,17 @@ export const getChannelData = async (id, channelId) => {
 
     const channel = channelData.toJSON();
     const isMember = channel.ChannelMembers.find((user) => user.user_id === id);
-    if(isMember){
+    if (isMember) {
       channel.isMember = true;
-      let members = [];
-      for(let i = 0; i < 10; i++) {
-        let some = channel.ChannelMembers.map(({role, User}) => ({ role, ...User }));
-        members.push(...some);
-      }
-      channel.ChannelMembers = members;
+      channel.ChannelMembers = channel.ChannelMembers.map(({ role, User }) => ({ role, ...User }));
       return channel;
     } else {
       delete channel.ChannelMembers;
       channel.isMember = false;
       return channel;
     }
-  } catch(err) {
+  } catch (err) {
     logger.error(`Failed to get channel info: ${err.message}`, {
-      stack: err.stack,
-    });
-    throw new AppError(err.message, 500);
-  }
-}
-
-export const joinChannel = async (id, data) => {
-  try {
-    const channelData = await Channel.findByPk(data.channelId);
-    if (!channelData) throw new AppError("Channel not found.", 404);
-    await ChannelMember.create({
-      channel_id: data.channelId,
-      user_id: id,
-      role: 'member',
-      invite_by: data.inviteBy
-    });
-    return true;
-  } catch(err) {
-    logger.error(`Failed to join channel: ${err.message}`, {
       stack: err.stack,
     });
     throw new AppError(err.message, 500);
