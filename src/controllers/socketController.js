@@ -6,6 +6,7 @@ export const setupSocketHandlers = (socketIO) => {
     // Set user as active on connect
     if (socket.user && socket.user.id) {
       await SocketService.updateUserActiveStatus(socket.user.id, true);
+      socket.broadcast.emit('userStatusChanged', { userId: socket.user.id, isOnline: true });
       socket.join(socket.user.id);
     }
     // Emit a welcome event
@@ -16,6 +17,66 @@ export const setupSocketHandlers = (socketIO) => {
     socketIO.to(socket.user.id).emit("personalChat", { chat: await SocketService.personalChats(socket.user.id) });
 
     // For Channels communication with socket
+    socket.on('joinChannel', async (data) => {
+      const senderId = socket.user.id;
+      const { result, userIds, error } = await ChannelSocketService.joinChannel(senderId, data);
+      if (error) {
+        socketIO.to(senderId).emit('joinChannelErrorMessage', { error });
+        return;
+      }
+      socketIO.to(senderId).emit("channels", { channels: await ChannelSocketService.userChannels(senderId) });
+      socketIO.to(data.channelId).emit('receiveChannelChatMessage', { chat: result });
+      socketIO.to(socket.user.id).emit('receiveChannelChatMessage', { chat: result });
+      userIds.forEach(userId => {
+        if (userId !== senderId) {
+          socketIO.to(userId).emit('receiveChannelChatMessage', { chat: result });
+        }
+      });
+      socketIO.to(socket.user.id).emit('redirectToChannel', { redirectId: data.channelId });
+    });
+
+    socket.on('leaveChannel', async ({ channelId }) => {
+      const senderId = socket.user.id;
+      const { result, userIds, error } = await ChannelSocketService.leaveChannel(senderId, channelId);
+      if (error) {
+        socketIO.to(senderId).emit('leaveChannelErrorMessage', { error });
+        return;
+      }
+      socketIO.to(socket.user.id).emit("channels", { channels: await ChannelSocketService.userChannels(socket.user.id) });
+      socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: result });
+      userIds.forEach(userId => {
+        if (userId !== senderId) {
+          socketIO.to(userId).emit('receiveChannelChatMessage', { chat: result });
+        }
+      });
+      socketIO.to(socket.user.id).emit('redirectToChannel', { redirectId: null });
+    })
+
+    socket.on('removeUser', async ({ channelId, userId }) => {
+      const senderId = socket.user.id;
+      const { result, userIds, removedUserId, error } = await ChannelSocketService.removeUser(senderId, userId, channelId);
+      if (error) {
+        socketIO.to(senderId).emit('removeUserErrorMessage', { error });
+        return;
+      }
+
+      // Update channels list for the removed user
+      socketIO.to(removedUserId).emit("channels", { channels: await ChannelSocketService.userChannels(removedUserId) });
+      // Redirect removed user if they are currently viewing the channel
+      socketIO.to(removedUserId).emit('redirectToChannel', { redirectId: null });
+
+      // Notify channel
+      socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: result });
+      userIds.forEach(uid => {
+        socketIO.to(uid).emit('receiveChannelChatMessage', { chat: result });
+      });
+
+      // Update member list in channel info for everyone currently viewing it
+      // (This might require a standardized event, but for now we rely on the chat message to implicitly signal update or the user re-fetching)
+      // Ideally we broadcast 'channelMembersUpdated' or similar. 
+      // Given the current architecture, I'll stick to chat message + maybe reloading channel data if needed.
+    })
+
     socket.on('channelCreated', async () => {
       socketIO.to(socket.user.id).emit("channels", { channels: await ChannelSocketService.userChannels(socket.user.id) });
     })
@@ -33,11 +94,11 @@ export const setupSocketHandlers = (socketIO) => {
 
     socket.on('channelChatMessagesSend', async ({ channelId, message, messageType, attachments }) => {
       const senderId = socket.user.id;
-      const {result, userIds} = await ChannelSocketService.sendChannelChatMessage(senderId, channelId, message, messageType, attachments);
+      const { result, userIds } = await ChannelSocketService.sendChannelChatMessage(senderId, channelId, message, messageType, attachments);
       socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: result });
       socketIO.to(socket.user.id).emit('receiveChannelChatMessage', { chat: result });
       userIds.forEach(userId => {
-        if(userId !== senderId){
+        if (userId !== senderId) {
           socketIO.to(userId).emit('receiveChannelChatMessage', { chat: result });
         }
       });
@@ -100,38 +161,11 @@ export const setupSocketHandlers = (socketIO) => {
       }
     });
 
-    // Join a room (channel)
-    socket.on('join-room', async ({ channelId, userId }) => {
-      await SocketService.joinChannel(socket, channelId, userId);
-    });
-
-    // Leave a room (channel)
-    socket.on('leave-room', async ({ channelId, userId }) => {
-      await SocketService.leaveChannel(socket, channelId, userId);
-    });
-
-    // Create a room (channel)
-    socket.on('create-room', async ({ title, description, ownerId, type }) => {
-      const channel = await SocketService.createChannel(socket, { title, description, ownerId, type });
-      socketIO.emit('new-room', { channel });
-    });
-
-    // Delete a room (channel)
-    socket.on('delete-room', async ({ channelId, userId }) => {
-      await SocketService.deleteChannel(socket, channelId, userId);
-      socketIO.emit('room-deleted', { channelId });
-    });
-
-    // Handle incoming messages (broadcast to room)
-    socket.on('message', ({ channelId, userId, message }) => {
-      if (!channelId || !userId || !message) return;
-      socketIO.to(channelId).emit('message', { userId, message });
-    });
-
     // Handle disconnect
     socket.on('disconnect', async () => {
       if (socket.user && socket.user.id) {
         await SocketService.updateUserActiveStatus(socket.user.id, false);
+        socket.broadcast.emit('userStatusChanged', { userId: socket.user.id, isOnline: false });
       }
     });
   });
