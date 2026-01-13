@@ -9,13 +9,13 @@ const router = Router();
 
 router.use(verifyToken);
 
+router.get('/profile/:id', validate(ChannelValidation.getChannelDataValidators, "params"), UserController.showProfile);
 router.get('/profile', UserController.show);
 
 router.put('/profile', UserController.update);
 
 router.get('/files', UserController.getAllFiles);
 
-router.post('/channels/join', validate(ChannelValidation.joinChannelValidators), UserController.joinChannel);
 router.get('/channels/:id', validate(ChannelValidation.getChannelDataValidators, "params"), UserController.getChannelData);
 router.get('/channels', UserController.getAllChannels);
 
