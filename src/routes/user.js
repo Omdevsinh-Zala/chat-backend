@@ -2,6 +2,7 @@ import { Router } from "express";
 import { verifyToken } from "../middlewares/verifyToken.js";
 import { successResponse } from "../utils/response.js";
 import * as UserController from "../controllers/userController.js";
+import * as PushController from "../controllers/pushSubscriptionController.js";
 import { validate } from "../middlewares/validator.js"
 import * as ChannelValidation from "../validations/user/channelValidation.js"
 
@@ -24,6 +25,9 @@ router.get('/settings', (req, res) => {
 });
 
 router.post('/channels', validate(ChannelValidation.createChannelValidators), UserController.createChannel);
+
+router.post('/push/subscribe', PushController.saveSubscription);
+router.post('/push/unsubscribe', PushController.deleteSubscription);
 
 router.get('/', UserController.getUsers);
 
