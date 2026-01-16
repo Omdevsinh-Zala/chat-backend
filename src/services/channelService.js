@@ -158,11 +158,18 @@ export const sendChannelChatMessage = async (id, channelId, message, messageType
     if (attachmentsData && attachmentsData.length > 0) {
       messageData.setDataValue('attachments', attachmentsData);
     }
+    const sender = await User.findByPk(id, {
+      attributes: ['id', 'first_name', 'last_name', 'full_name', 'username', 'avatar_url']
+    });
+
+    const messageJson = messageData.toJSON();
+    messageJson.Sender = sender ? sender.toJSON() : null;
+
     const date = new Date(messageData.created_at);
     const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric', day: 'numeric' });
     const result = {
       monthYear,
-      messages: [messageData.toJSON()]
+      messages: [messageJson]
     }
 
     const channelMembers = await ChannelMember.findAll({
@@ -242,7 +249,6 @@ export const joinChannel = async (id, data) => {
 
     return { result, userIds: channelMembers.map(member => member.user_id), error: null };
   } catch (err) {
-    console.log(err)
     logger.error(`Failed to join channel: ${err.message}`, {
       stack: err.stack,
     });

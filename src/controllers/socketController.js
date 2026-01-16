@@ -8,6 +8,12 @@ export const setupSocketHandlers = (socketIO) => {
       await SocketService.updateUserActiveStatus(socket.user.id, true);
       socket.broadcast.emit('userStatusChanged', { userId: socket.user.id, isOnline: true });
       socket.join(socket.user.id);
+
+      // Re-join all channel rooms the user is a member of
+      const userChannels = await ChannelSocketService.userChannels(socket.user.id);
+      userChannels.forEach(channel => {
+        socket.join(channel.id);
+      });
     }
     // Emit a welcome event
     socketIO.to(socket.user.id).emit("channels", { channels: await ChannelSocketService.userChannels(socket.user.id) });
@@ -24,14 +30,10 @@ export const setupSocketHandlers = (socketIO) => {
         socketIO.to(senderId).emit('joinChannelErrorMessage', { error });
         return;
       }
+
+      socket.join(data.channelId); // Join the socket room
       socketIO.to(senderId).emit("channels", { channels: await ChannelSocketService.userChannels(senderId) });
       socketIO.to(data.channelId).emit('receiveChannelChatMessage', { chat: result });
-      socketIO.to(socket.user.id).emit('receiveChannelChatMessage', { chat: result });
-      userIds.forEach(userId => {
-        if (userId !== senderId) {
-          socketIO.to(userId).emit('receiveChannelChatMessage', { chat: result });
-        }
-      });
       socketIO.to(socket.user.id).emit('redirectToChannel', { redirectId: data.channelId });
     });
 
@@ -42,13 +44,10 @@ export const setupSocketHandlers = (socketIO) => {
         socketIO.to(senderId).emit('leaveChannelErrorMessage', { error });
         return;
       }
+
+      socket.leave(channelId);
       socketIO.to(socket.user.id).emit("channels", { channels: await ChannelSocketService.userChannels(socket.user.id) });
       socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: result });
-      userIds.forEach(userId => {
-        if (userId !== senderId) {
-          socketIO.to(userId).emit('receiveChannelChatMessage', { chat: result });
-        }
-      });
       socketIO.to(socket.user.id).emit('redirectToChannel', { redirectId: null });
     })
 
@@ -60,21 +59,17 @@ export const setupSocketHandlers = (socketIO) => {
         return;
       }
 
-      // Update channels list for the removed user
-      socketIO.to(removedUserId).emit("channels", { channels: await ChannelSocketService.userChannels(removedUserId) });
-      // Redirect removed user if they are currently viewing the channel
-      socketIO.to(removedUserId).emit('redirectToChannel', { redirectId: null });
+      // Find the socket for the removed user and make it leave the room
+      const allSockets = await socketIO.fetchSockets();
+      const targetSocket = allSockets.find(s => s.user && s.user.id === removedUserId);
+      if (targetSocket) {
+        targetSocket.leave(channelId);
+        targetSocket.emit("channels", { channels: await ChannelSocketService.userChannels(removedUserId) });
+        targetSocket.emit('redirectToChannel', { redirectId: null });
+      }
 
       // Notify channel
       socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: result });
-      userIds.forEach(uid => {
-        socketIO.to(uid).emit('receiveChannelChatMessage', { chat: result });
-      });
-
-      // Update member list in channel info for everyone currently viewing it
-      // (This might require a standardized event, but for now we rely on the chat message to implicitly signal update or the user re-fetching)
-      // Ideally we broadcast 'channelMembersUpdated' or similar. 
-      // Given the current architecture, I'll stick to chat message + maybe reloading channel data if needed.
     })
 
     socket.on('channelCreated', async () => {
@@ -96,12 +91,6 @@ export const setupSocketHandlers = (socketIO) => {
       const senderId = socket.user.id;
       const { result, userIds } = await ChannelSocketService.sendChannelChatMessage(senderId, channelId, message, messageType, attachments);
       socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: result });
-      socketIO.to(socket.user.id).emit('receiveChannelChatMessage', { chat: result });
-      userIds.forEach(userId => {
-        if (userId !== senderId) {
-          socketIO.to(userId).emit('receiveChannelChatMessage', { chat: result });
-        }
-      });
     })
 
     socket.on('appendChannelMessages', async ({ channelId, offset }) => {
