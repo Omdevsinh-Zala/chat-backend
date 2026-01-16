@@ -23,9 +23,8 @@ export const handleUpload = (req, res) => {
       };
     });
 
-    return successResponse({ res, data: { files: uploadedFiles }, message: 'Files uploaded successfully', statusCode: 200 });
+    return successResponse({ res, data: { files: uploadedFiles }, message: null, statusCode: 200 });
   } catch (err) {
     return errorResponse({ res, message: err, statusCode: 500, data: null });
   }
-
 };
