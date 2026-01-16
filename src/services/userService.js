@@ -133,6 +133,8 @@ export const getAllFiles = async (id, filters) => {
 
 export const createChannel = async (id, data) => {
   try {
+    const user = await User.findByPk(id);
+    if (!user) throw new AppError("User not found.", 404);
     const channel = await Channel.create({
       title: data.title,
       slug: data.title.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '') + '-' + Math.random().toString(36).substring(2, 7),
@@ -151,7 +153,7 @@ export const createChannel = async (id, data) => {
     await Message.create({
       sender_id: id,
       channel_id: channel.toJSON().id,
-      content: `${data.full_name} created the channel '${data.title}'.`,
+      content: `${user.full_name} created the channel '${data.title}'.`,
       message_type: 'system',
     });
     return true;
