@@ -25,7 +25,7 @@ export const setupSocketHandlers = (socketIO) => {
     // For Channels communication with socket
     socket.on('joinChannel', async (data) => {
       const senderId = socket.user.id;
-      const { result, userIds, error } = await ChannelSocketService.joinChannel(senderId, data);
+      const { result, error } = await ChannelSocketService.joinChannel(senderId, data);
       if (error) {
         socketIO.to(senderId).emit('joinChannelErrorMessage', { error });
         return;
@@ -39,7 +39,7 @@ export const setupSocketHandlers = (socketIO) => {
 
     socket.on('leaveChannel', async ({ channelId }) => {
       const senderId = socket.user.id;
-      const { result, userIds, error } = await ChannelSocketService.leaveChannel(senderId, channelId);
+      const { result, error } = await ChannelSocketService.leaveChannel(senderId, channelId);
       if (error) {
         socketIO.to(senderId).emit('leaveChannelErrorMessage', { error });
         return;
@@ -53,7 +53,7 @@ export const setupSocketHandlers = (socketIO) => {
 
     socket.on('removeUser', async ({ channelId, userId }) => {
       const senderId = socket.user.id;
-      const { result, userIds, removedUserId, error } = await ChannelSocketService.removeUser(senderId, userId, channelId);
+      const { result, removedUserId, error } = await ChannelSocketService.removeUser(senderId, userId, channelId);
       if (error) {
         socketIO.to(senderId).emit('removeUserErrorMessage', { error });
         return;
@@ -89,7 +89,7 @@ export const setupSocketHandlers = (socketIO) => {
 
     socket.on('channelChatMessagesSend', async ({ channelId, message, messageType, attachments }) => {
       const senderId = socket.user.id;
-      const { result, userIds } = await ChannelSocketService.sendChannelChatMessage(senderId, channelId, message, messageType, attachments);
+      const { result } = await ChannelSocketService.sendChannelChatMessage(senderId, channelId, message, messageType, attachments);
       socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: result });
     })
 

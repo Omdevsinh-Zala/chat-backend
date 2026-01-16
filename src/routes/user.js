@@ -20,7 +20,7 @@ router.get('/channels/:id', validate(ChannelValidation.getChannelDataValidators,
 router.get('/channels', UserController.getAllChannels);
 
 router.get('/settings', (req, res) => {
-  return successResponse({ res, data: null, message: "User settings fetched successfully.", statusCode: 200 });
+  return successResponse({ res, data: null, message: null, statusCode: 200 });
 });
 
 router.post('/channels', validate(ChannelValidation.createChannelValidators), UserController.createChannel);
