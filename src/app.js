@@ -51,7 +51,6 @@ socketIO.use((socket, next) => {
   verifySocketToken(socket, next);
 });
 
-// Setup socket handlers after socketIO is initialized
 setupSocketHandlers(socketIO);
 
 app.use(helmet({

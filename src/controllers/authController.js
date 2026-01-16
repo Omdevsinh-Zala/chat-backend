@@ -65,7 +65,7 @@ export const refreshToken = (req, res, next) => {
             maxAge: 1000 * 60 * 15
         });
 
-        return successResponse({ res, data: null, message: "Access token refreshed successfully.", statusCode: 200 });
+        return successResponse({ res, data: null, message: null, statusCode: 200 });
     });
 }
 
@@ -84,7 +84,7 @@ export const checkUsername = async (req, res, next) => {
         const { username } = req.query;
         const user = await LoginService.checkUsername(username);
         const isAvailable = !user;
-        return successResponse({ res, data: { isAvailable }, message: "Username availability checked successfully.", statusCode: 200 });
+        return successResponse({ res, data: { isAvailable }, message: null, statusCode: 200 });
     } catch (err) {
         logger.error(err.message);
         return next(err);
