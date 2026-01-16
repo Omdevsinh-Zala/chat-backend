@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { ChannelMember, Channel, User, Message, Attachment } from "../models/initModels.js";
+import { Channel, User, Message, Attachment } from "../models/initModels.js";
 import logger from '../config/logger.js';
 import { Op } from 'sequelize';
 import { config } from '../config/app.js';
