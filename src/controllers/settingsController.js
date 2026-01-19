@@ -1,5 +1,6 @@
 import { Setting } from '../models/initModels.js';
 import logger from '../config/logger.js';
+import { successResponse, errorResponse } from '../utils/response.js';
 
 export const getUserSettings = async (req, res) => {
     try {
@@ -21,13 +22,10 @@ export const getUserSettings = async (req, res) => {
             });
         }
 
-        res.status(200).json({
-            status: 'success',
-            data: settings
-        });
+        return successResponse({ res, data: settings, message: null, statusCode: 200 })
     } catch (err) {
         logger.error(`Failed to get user settings: ${err.message}`);
-        res.status(500).json({ status: 'error', message: 'Internal server error' });
+        return errorResponse({ res, message: 'Internal server error', statusCode: 500 })
     }
 };
 
@@ -49,12 +47,9 @@ export const updateUserSettings = async (req, res) => {
             await settings.update(updates);
         }
 
-        res.status(200).json({
-            status: 'success',
-            data: settings
-        });
+        return successResponse({ res, data: settings, message: null, statusCode: 200 });
     } catch (err) {
         logger.error(`Failed to update user settings: ${err.message}`);
-        res.status(500).json({ status: 'error', message: 'Internal server error' });
+        return errorResponse({ res, message: 'Internal server error', statusCode: 500 });
     }
 };

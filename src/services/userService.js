@@ -174,6 +174,9 @@ export const getAllChannels = async (id, filters) => {
     const sortBy = filters.sortBy || 'created_at';
     const whereClause = {
       is_private: false,
+      status: {
+        [Op.ne]: 'deleted'
+      }
     }
 
     if (filters.search) {
@@ -243,7 +246,7 @@ export const getChannelData = async (id, channelId) => {
       ],
     });
 
-    if (!channelData) throw new AppError("Channel not found.", 404);
+    if (!channelData || channelData.status === 'deleted') throw new AppError("Channel not found.", 404);
 
     const channel = channelData.toJSON();
     const isMember = channel.ChannelMembers.find((user) => user.user_id === id);

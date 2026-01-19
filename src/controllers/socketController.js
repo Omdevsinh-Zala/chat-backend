@@ -70,6 +70,64 @@ export const setupSocketHandlers = (socketIO) => {
         targetSocket.emit('redirectToChannel', { redirectId: null });
       }
       socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: result });
+      socketIO.to(channelId).emit('userRemoved', { channelId, removedUserId });
+    });
+
+    socket.on('deleteChannel', async ({ channelId }) => {
+      const senderId = socket.user.id;
+      const channelData = await ChannelSocketService.getChannelData(channelId);
+
+      // Only owner can delete
+      if (channelData.owner_id !== senderId) {
+        socketIO.to(senderId).emit('deleteChannelError', { error: 'Only channel owner can delete the channel' });
+        return;
+      }
+
+      // Soft delete the channel
+      await ChannelSocketService.deleteChannel(channelId);
+
+      // Notify all members and remove them from channel room
+      socketIO.to(channelId).emit('channelDeleted', { channelId });
+
+      const allSockets = await socketIO.fetchSockets();
+      for (const s of allSockets) {
+        if (s.rooms.has(channelId)) {
+          s.leave(channelId);
+          if (s.user && s.user.id) {
+            socketIO.to(s.user.id).emit('channels', { channels: await ChannelSocketService.userChannels(s.user.id) });
+          }
+        }
+      }
+    });
+
+    socket.on('updateMemberRole', async ({ channelId, userId, role }) => {
+      const requesterId = socket.user.id;
+      const { error, previousOwnerId, message } = await ChannelSocketService.updateMemberRole(requesterId, channelId, userId, role);
+
+      if (error) {
+        socketIO.to(requesterId).emit('updateRoleError', { error });
+        return;
+      }
+
+      // Notify all channel members about the role change
+      socketIO.to(channelId).emit('memberRoleUpdated', {
+        channelId,
+        userId,
+        newRole: role,
+        previousOwnerId
+      });
+
+      if (message) {
+        socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: message });
+      }
+
+      // Refresh channel data for all members
+      const allSockets = await socketIO.fetchSockets();
+      for (const s of allSockets) {
+        if (s.rooms.has(channelId) && s.user && s.user.id) {
+          socketIO.to(s.user.id).emit('channels', { channels: await ChannelSocketService.userChannels(s.user.id) });
+        }
+      }
     });
 
     socket.on('channelCreated', async () => {

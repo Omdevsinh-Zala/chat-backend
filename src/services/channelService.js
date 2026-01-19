@@ -7,6 +7,11 @@ import AppError from "../utils/appError.js";
 
 export const userChannels = async (id) => {
   const channels = await Channel.findAll({
+    where: {
+      status: {
+        [Op.ne]: 'deleted'
+      }
+    },
     include: [
       {
         model: User,
@@ -380,6 +385,88 @@ export const removeUser = async (requesterId, targetUserId, channelId) => {
     logger.error(`Failed to remove user from channel: ${err.message}`, {
       stack: err.stack,
     });
-    return { result: null, userIds: null, error: err.message };
+    return { result: null, userIds: null, removedUserId: null, error: err.message };
+  }
+}
+
+export const deleteChannel = async (channelId) => {
+  try {
+    await Channel.update({ status: 'deleted' }, { where: { id: channelId } });
+    return { success: true, error: null };
+  } catch (err) {
+    logger.error(`Failed to delete channel: ${err.message}`, {
+      stack: err.stack,
+    });
+    return { success: false, error: err.message };
+  }
+}
+
+export const updateMemberRole = async (requesterId, channelId, userId, role) => {
+  try {
+    const channel = await Channel.findByPk(channelId);
+    if (!channel) throw new AppError('Channel not found.', 404);
+
+    if (channel.owner_id !== requesterId) {
+      throw new AppError('Only channel owner can change member roles.', 403);
+    }
+
+    if (userId === requesterId) {
+      throw new AppError('Cannot change your own role.', 400);
+    }
+
+    const member = await ChannelMember.findOne({
+      where: { channel_id: channelId, user_id: userId }
+    });
+
+    if (!member) throw new AppError('Member not found in channel.', 404);
+
+    const requester = await User.findByPk(requesterId);
+    const targetUser = await User.findByPk(userId);
+
+    let previousOwnerId = null;
+    let systemMessageContent = '';
+
+    // If promoting to owner, demote current owner to admin
+    if (role === 'owner') {
+      const currentOwner = await ChannelMember.findOne({
+        where: { channel_id: channelId, user_id: requesterId }
+      });
+
+      if (currentOwner) {
+        await currentOwner.update({ role: 'admin' });
+      }
+
+      await channel.update({ owner_id: userId });
+      previousOwnerId = requesterId;
+      systemMessageContent = `${requester.full_name} transferred channel ownership to ${targetUser.full_name}.`;
+    } else if (role === 'admin') {
+      systemMessageContent = `${requester.full_name} promoted ${targetUser.full_name} to Admin.`;
+    } else if (role === 'member') {
+      systemMessageContent = `${requester.full_name} demoted ${targetUser.full_name} to Member.`;
+    }
+
+    await member.update({ role });
+
+    // Create system message
+    const messageData = await Message.create({
+      sender_id: requesterId,
+      channel_id: channelId,
+      content: systemMessageContent,
+      message_type: 'system',
+    });
+
+    const date = new Date(messageData.created_at);
+    const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric', day: 'numeric' });
+    const messageResult = {
+      monthYear,
+      messages: [messageData.toJSON()]
+    };
+
+    return { result: true, error: null, previousOwnerId, message: messageResult };
+  } catch (err) {
+    logger.error(`Failed to update member role: ${err.message}`, {
+      stack: err.stack,
+    });
+    return { result: null, error: err.message, previousOwnerId: null };
   }
 }
