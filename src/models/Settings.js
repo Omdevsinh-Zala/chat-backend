@@ -28,7 +28,7 @@ export const Setting = sequelize.define("Setting", {
   },
   notification_sound: {
     type: DataTypes.ENUM,
-    values: ["default", "chime", "ding", "none"],
+    values: ["default", "chime", "ding", "sciClick", "beep", "none"],
     defaultValue: "default"
   },
   push_enabled: {
@@ -44,8 +44,13 @@ export const Setting = sequelize.define("Setting", {
     type: DataTypes.STRING,
     allowNull: true,
     defaultValue: null
+  },
+  mat_theme: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: 'azure-theme'
   }
-},{
+}, {
   timestamps: true,
   paranoid: true,
   version: true,

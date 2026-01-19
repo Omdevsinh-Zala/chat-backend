@@ -31,5 +31,11 @@ export const config = {
     pagination: {
         limit: parseInt(process.env.PAGINATION_LIMIT, 10),
         offset: parseInt(process.env.PAGINATION_OFFSET, 10),
-    }
+    },
+    support_email: process.env.SUPPORT_EMAIL,
+    vapid: {
+        public_key: process.env.VAPID_PUBLIC_KEY,
+        private_key: process.env.VAPID_PRIVATE_KEY
+    },
+    profileImagePrefix: process.env.PROFILE_IMAGE_PATH
 }
