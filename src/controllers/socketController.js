@@ -106,10 +106,10 @@ export const setupSocketHandlers = (socketIO) => {
             userId: member.user_id,
             senderId: senderId,
             title: channelData.title,
-            body: `${sender.first_name}: ${message}`,
+            body: `${sender.first_name}: ` + (attachments ? 'Sent a file' : message),
             type: 'message',
             channelId: channelId,
-            messageId: result.messages[0].id
+            messageId: result.messages[0].id,
           });
         }
       });
@@ -151,9 +151,9 @@ export const setupSocketHandlers = (socketIO) => {
         userId: receiverId,
         senderId: senderId,
         title: sender.first_name,
-        body: message,
+        body: `${sender.first_name}: ` + (attachments ? 'Sent a file' : message),
         type: 'message',
-        messageId: userMessage.messages[0].id
+        messageId: userMessage.messages[0].id,
       });
     });
 

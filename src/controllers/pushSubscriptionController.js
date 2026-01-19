@@ -10,19 +10,20 @@ export const saveSubscription = async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'Subscription is required' });
         }
 
-        // Check if subscription already exists
+        // Check if device already has a subscription
         const existing = await PushSubscription.findOne({
             where: {
                 user_id: userId,
-                subscription: subscription
+                device_id: device_id
             }
         });
 
         if (existing) {
-            if (!existing.is_active) {
-                await existing.update({ is_active: true });
-            }
-            return res.status(200).json({ status: 'success', message: 'Subscription already exists' });
+            await existing.update({
+                subscription,
+                is_active: true
+            });
+            return res.status(200).json({ status: 'success', message: 'Subscription updated' });
         }
 
         await PushSubscription.create({

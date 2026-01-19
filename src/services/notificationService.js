@@ -3,13 +3,12 @@ import { Notification, NotificationPreference, PushSubscription, User } from '..
 import logger from '../config/logger.js';
 import { config } from '../config/app.js';
 
-const supportEmail = config.support_email;
-const vapidPublicKey = config.VAPID_PUBLIC_KEY;
-const vapidPrivateKey = config.VAPID_PRIVATE_KEY;
+const vapidPublicKey = config.vapid.public_key;
+const vapidPrivateKey = config.vapid.private_key;
 
 if (vapidPublicKey && vapidPrivateKey) {
     webpush.setVapidDetails(
-        supportEmail,
+        'mailto:' + config.support_email,
         vapidPublicKey,
         vapidPrivateKey
     );
@@ -64,8 +63,10 @@ export const createAndSendNotification = async ({
             notification: {
                 title,
                 body,
-                icon: user.toJSON().avatar_url,
-                data: { url }
+                icon: config.profileImagePrefix + user.toJSON().avatar_url,
+                data: { url },
+                tag: messageId,
+                renotify: !!messageId
             }
         });
 
