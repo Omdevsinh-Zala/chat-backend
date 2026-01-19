@@ -258,6 +258,13 @@ export const personalChats = async (id) => {
 
 export const UpdateUserActiveChatId = async (id, chatId, isChannel) => {
   try {
+    // Validate chatId is a valid UUID or null
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (chatId && !uuidRegex.test(chatId)) {
+      logger.warn(`Invalid chatId format: ${chatId}, setting to null`);
+      chatId = null;
+    }
+
     await User.update({ active_chat_id: chatId, is_last_active_chat_channel: isChannel }, { where: { id } });
     logger.info(`User active id changed to ${chatId} for user ${id}`);
   } catch (err) {
@@ -265,7 +272,6 @@ export const UpdateUserActiveChatId = async (id, chatId, isChannel) => {
       stack: err.stack,
       userId: id
     });
-    throw err;
   }
 }
 
