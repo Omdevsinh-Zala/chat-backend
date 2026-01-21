@@ -43,6 +43,10 @@ export const Attachment = sequelize.define("Attachment", {
     metadata: {
         type: DataTypes.JSONB,
         allowNull: true
+    },
+    thumbnail_url: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 }, {
     timestamps: true,

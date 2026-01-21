@@ -72,7 +72,7 @@ export const getChannelChatMessages = async (senderId, channelId, offsets) => {
         {
           model: Attachment,
           as: 'attachments',
-          attributes: ['id', 'file_type', 'file_name', 'file_size', 'file_url', 'mime_type', 'created_at']
+          attributes: ['id', 'file_type', 'file_name', 'file_size', 'thumbnail_url', 'file_url', 'mime_type', 'created_at']
         },
         {
           model: User,
@@ -154,7 +154,8 @@ export const sendChannelChatMessage = async (id, channelId, message, messageType
         file_url: att.file_url,
         file_name: att.file_name,
         file_size: att.file_size,
-        metadata: att.metadata || {}
+        metadata: att.metadata || {},
+        thumbnail_url: att.thumbnail_url || null
       }));
       await Attachment.bulkCreate(attachmentRows);
       attachmentsData = attachmentRows;
