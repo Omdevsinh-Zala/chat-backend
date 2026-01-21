@@ -60,13 +60,13 @@ export const logoutUser = (res) => {
         });
 }
 
-export const checkUsername = async (username) => {
+export const checkUsername = async (id, username) => {
     const user = await User.findOne({
         where: {
             username: username,
         },
-        attributes: ['id'],
+        attributes: ['id', 'username'],
         raw: true,
     });
-    return !!user;
+    return user?.id === id ? user.username === username ? false : true : !!user;
 }
