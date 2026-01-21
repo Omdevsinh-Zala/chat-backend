@@ -58,7 +58,10 @@ export const Message = sequelize.define("Message", {
   createdAt: 'created_at',
   indexes: [
     { fields: ['channel_id'] },
-    { fields: ['sender_id'] }
+    { fields: ['sender_id'] },
+    { fields: ['receiver_id'] },
+    { fields: ['created_at'] },
+    { fields: ['sender_id', 'receiver_id', 'created_at'] }
   ]
 });
 

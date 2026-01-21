@@ -56,7 +56,11 @@ export const Attachment = sequelize.define("Attachment", {
     underscored: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
-    deletedAt: 'deleted_at'
+    updatedAt: 'updated_at',
+    deletedAt: 'deleted_at',
+    indexes: [
+        { fields: ['message_id'] }
+    ]
 });
 
 Attachment.associate = (models) => {
