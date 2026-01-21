@@ -82,7 +82,16 @@ export const logoutUser = async (req, res, next) => {
 export const checkUsername = async (req, res, next) => {
     try {
         const { username } = req.query;
-        const user = await LoginService.checkUsername(username);
+        const accessToken = req.cookies?.access_token;
+
+        jwt.verify(accessToken, config.jwt.access.secret, (error, decoded) => {
+            if (error) {
+                req.user.id = null;
+            }
+            req.user = decoded;
+        });
+        const id = req.user.id;
+        const user = await LoginService.checkUsername(id, username);
         const isAvailable = !user;
         return successResponse({ res, data: { isAvailable }, message: null, statusCode: 200 });
     } catch (err) {

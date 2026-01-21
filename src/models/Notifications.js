@@ -19,7 +19,7 @@ export const Notification = sequelize.define("Notification", {
   },
   channel_id: {
     type: DataTypes.UUID,
-    allowNull: false
+    allowNull: true
   },
   message_id: {
     type: DataTypes.UUID,

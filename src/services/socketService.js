@@ -294,7 +294,7 @@ export const getChatMessages = async (receiverId, senderId, offsets) => {
         {
           model: Attachment,
           as: 'attachments',
-          attributes: ['id', 'file_type', 'file_name', 'file_size', 'file_url', 'mime_type', 'created_at']
+          attributes: ['id', 'file_type', 'file_name', 'file_size', 'thumbnail_url', 'file_url', 'mime_type', 'created_at']
         }
       ],
     });
@@ -341,7 +341,8 @@ export const sendChatMessage = async (id, chatId, message, messageType = null, a
         file_url: att.file_url,
         file_name: att.file_name,
         file_size: att.file_size,
-        metadata: att.metadata || {}
+        metadata: att.metadata || {},
+        thumbnail_url: att.thumbnail_url || null
       }));
       await Attachment.bulkCreate(attachmentRows);
       attachmentsData = attachmentRows;
@@ -383,7 +384,7 @@ export const readMessages = async (id, messageId) => {
         {
           model: Attachment,
           as: 'attachments',
-          attributes: ['id', 'file_type', 'file_name', 'file_size', 'file_url', 'mime_type', 'created_at']
+          attributes: ['id', 'file_type', 'file_name', 'file_size', 'thumbnail_url', 'file_url', 'mime_type', 'created_at']
         }
       ]
     });

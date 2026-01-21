@@ -45,11 +45,15 @@ export const getProfileData = async (id) => {
 }
 
 export const updateUserData = async (id, updateUserData) => {
-  const updatedUserData = await User.update(updateUserData, {
+  await User.update(updateUserData, {
     where: { id },
-    returning: true,
   });
-  return updatedUserData;
+  const updatedUser = await User.findByPk(id, {
+    attributes: {
+      exclude: ['password', 'created_at', 'deleted_at', 'updated_at', 'is_blocked', 'version', 'providers', 'login_provider']
+    }
+  });
+  return updatedUser ? updatedUser.toJSON() : null;
 }
 
 export const getUsers = async (query) => {

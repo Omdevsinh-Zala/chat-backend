@@ -1,6 +1,7 @@
 import * as SocketService from '../services/socketService.js';
 import * as ChannelSocketService from '../services/channelService.js';
 import * as NotificationService from '../services/notificationService.js';
+import * as UserService from '../services/userService.js';
 
 export const setupSocketHandlers = (socketIO) => {
   socketIO.on('connection', async (socket) => {
@@ -236,6 +237,14 @@ export const setupSocketHandlers = (socketIO) => {
         socketIO.to(socket.user.id).emit("recentlyMessagesUsers", { users: await SocketService.recentlyMessagesUsers(currentUserId) });
       }
     });
+
+    // User profile changes
+    socket.on('profileImageChange', async ({ image }) => {
+      const userId = socket.user.id;
+      await UserService.updateUserData(userId, { avatar_url: image });
+      socket.broadcast.emit("userImageChanged", { userId, avatar_url: image });
+      socketIO.to(socket.user.id).emit("profileDataChanges", { avatar_url: image });
+    })
 
     socket.on('disconnect', async () => {
       if (socket.user && socket.user.id) {
