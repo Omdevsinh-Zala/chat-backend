@@ -4,6 +4,7 @@ import { generateToken } from "./tokenService.js";
 import AppError from "../utils/appError.js";
 import { randomImage } from "../utils/profileImagePicker.js";
 import { config } from "../config/app.js";
+import { b2 } from "../config/b2.js";
 
 export const registerUser = async (data, t) => {
     const user = await User.create({
@@ -42,7 +43,15 @@ export const loginUser = async (data) => {
 
     const userData = user.toJSON();
 
-    return { userData, accessToken, refreshToken };
+    const auth = await b2.getDownloadAuthorization({
+        bucketId: config.b2.bucketID,
+        fileNamePrefix: '',
+        validDurationInSeconds: 60 * 60
+    });
+
+    const token = auth.data.authorizationToken;
+
+    return { userData, accessToken, refreshToken, token };
 }
 
 export const logoutUser = (res) => {

@@ -6,7 +6,7 @@ import { config } from "../config/app.js";
 import { Attachment } from "../models/initModels.js";
 import logger from "../config/logger.js";
 import { randomImage } from "../utils/profileImagePicker.js";
-import { deleteFile } from "../utils/deleteFile.js";
+import { removeFromB2, uploadToB2 } from "./b2Upload.js";
 
 export const getUserData = async (id) => {
   try {
@@ -68,14 +68,15 @@ export const updateUserData = async (id, data) => {
 }
 
 export const uploadProfileImage = async (id, files) => {
-  const { filename } = files;
+  const { filename, mimetype } = files;
+  await uploadToB2(filename, `profile/${filename}`, mimetype);
   const user = await User.findByPk(id);
   const previousImage = user.avatar_url;
   user.set({ avatar_url: filename });
   await user.save();
 
   if (previousImage) {
-    deleteFile(previousImage, true);
+    await removeFromB2(previousImage);
   }
 
   return user.toJSON();

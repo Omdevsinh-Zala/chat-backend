@@ -28,7 +28,7 @@ export const registerUser = async (req, res, next) => {
 
 export const loginUser = async (req, res, next) => {
     try {
-        const { userData, accessToken, refreshToken } = await LoginService.loginUser(req.body, res);
+        const { userData, accessToken, refreshToken, token } = await LoginService.loginUser(req.body, res);
 
         res.status(200).cookie('access_token', accessToken, {
             httpOnly: true,
@@ -42,7 +42,7 @@ export const loginUser = async (req, res, next) => {
                 sameSite: config.env === 'development' ? 'lax' : 'none',
                 maxAge: 24 * 3600000
             });
-        return successResponse({ res, data: userData, message: "Login successful.", statusCode: 200 });
+        return successResponse({ res, data: { ...userData, token }, message: "Login successful.", statusCode: 200 });
     } catch (err) {
         logger.error(err.message)
         next(err);

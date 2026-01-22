@@ -58,41 +58,47 @@ export const isImageUsable = async (imagePath) => {
  * Tries multiple timestamps if the first one yields a black frame.
  */
 export const generateSmartThumbnail = async (videoPath, outputDir, baseFilename) => {
-    const duration = await getVideoDuration(videoPath);
+  // ensure output folder exists
+  fs.mkdirSync(outputDir, { recursive: true });
 
-    // Define check points: 1s, 20%, 50%
-    const checkpoints = [1];
-    if (duration > 5) {
-        checkpoints.push(duration * 0.2); // 20% mark
-        checkpoints.push(duration * 0.5); // 50% mark
-    }
+  const duration = await getVideoDuration(videoPath);
 
-    // Ensure checkpoints are within duration
-    const validCheckpoints = checkpoints.filter(t => t < duration).map(t => Math.max(0, t));
-    if (validCheckpoints.length === 0) validCheckpoints.push(0); // Fallback to start
+  const checkpoints = [1];
+  if (duration > 5) {
+    checkpoints.push(duration * 0.2, duration * 0.5);
+  }
 
-    const finalThumbFilename = `thumb_${baseFilename}.jpg`;
-    const finalThumbPath = path.join(outputDir, finalThumbFilename);
+  const validCheckpoints = checkpoints
+    .filter(t => t < duration)
+    .map(t => Math.max(0, t));
 
-    for (const timestamp of validCheckpoints) {
-        try {
-            const tempPath = finalThumbPath;
+  if (validCheckpoints.length === 0) validCheckpoints.push(0);
 
-            const command = `"${ffmpegPath}" -y -i "${videoPath}" -ss ${timestamp} -vframes 1 "${tempPath}"`;
-            // -y to overwrite
-            await execPromise(command);
+  const finalThumbFilename = `thumb_${baseFilename}.jpg`;
+  const finalThumbPath = path.join(outputDir, finalThumbFilename);
 
-            if (await isImageUsable(tempPath)) {
-                return finalThumbFilename;
-            }
-        } catch (e) {
-            console.error(`Error processing video frame at ${timestamp}:`, e);
-        }
-    }
+  for (const timestamp of validCheckpoints) {
+    // temp file per attempt
+    const tempPath = path.join(
+      outputDir,
+      `.__tmp_thumb_${timestamp.toFixed(2)}.jpg`
+    );
 
-    if (fs.existsSync(finalThumbPath)) {
+    try {
+      const command = `"${ffmpegPath}" -y -ss ${timestamp} -i "${videoPath}" -frames:v 1 -update 1 "${tempPath}"`;
+      await execPromise(command);
+
+      if (await isImageUsable(tempPath)) {
+        fs.renameSync(tempPath, finalThumbPath);
         return finalThumbFilename;
-    }
+      }
 
-    return null;
+      fs.existsSync(tempPath) && fs.unlinkSync(tempPath);
+    } catch (e) {
+      console.error(`Error processing video frame at ${timestamp}:`, e);
+    }
+  }
+
+  return fs.existsSync(finalThumbPath) ? finalThumbFilename : null;
 };
+
