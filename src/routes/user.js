@@ -9,6 +9,7 @@ import * as ChannelValidation from "../validations/user/channelValidation.js"
 import * as SettingsValidation from "../validations/user/settingsValidation.js"
 import * as ChannelManagementValidation from "../validations/user/channelManagementValidation.js"
 import { updateUserValidation } from "../validations/user/updateUserValidation.js";
+import { profileMulterUpload } from "../utils/fileUpload.js";
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.get('/profile/:id', validate(ChannelValidation.getChannelDataValidators, 
 router.get('/profile', UserController.show);
 
 router.put('/profile', validate(updateUserValidation), UserController.update);
+router.post('/profile/avatar', profileMulterUpload.single('file'), UserController.uploadProfileImage);
 
 router.get('/files', UserController.getAllFiles);
 
