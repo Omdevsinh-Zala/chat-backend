@@ -6,6 +6,7 @@ import { config } from "../config/app.js";
 import { Attachment } from "../models/initModels.js";
 import logger from "../config/logger.js";
 import { randomImage } from "../utils/profileImagePicker.js";
+import { deleteFile } from "../utils/deleteFile.js";
 
 export const getUserData = async (id) => {
   try {
@@ -62,6 +63,20 @@ export const updateUserData = async (id, data) => {
 
   user.set(updates);
   await user.save();
+
+  return user.toJSON();
+}
+
+export const uploadProfileImage = async (id, files) => {
+  const { filename } = files;
+  const user = await User.findByPk(id);
+  const previousImage = user.avatar_url;
+  user.set({ avatar_url: filename });
+  await user.save();
+
+  if (previousImage) {
+    deleteFile(previousImage, true);
+  }
 
   return user.toJSON();
 }

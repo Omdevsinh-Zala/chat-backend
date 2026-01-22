@@ -1,7 +1,6 @@
 import * as SocketService from '../services/socketService.js';
 import * as ChannelSocketService from '../services/channelService.js';
 import * as NotificationService from '../services/notificationService.js';
-import * as UserService from '../services/userService.js';
 
 export const setupSocketHandlers = (socketIO) => {
   socketIO.on('connection', async (socket) => {
@@ -242,11 +241,17 @@ export const setupSocketHandlers = (socketIO) => {
     socket.on('profileImageChange', async ({ image }) => {
       const userId = socket.user.id;
       socket.broadcast.emit("userImageChanged", { userId, avatar_url: image });
+      socketIO.to(socket.user.id).emit("personalChat", {
+        chat: await SocketService.personalChats(socket.user.id)
+      })
     });
 
     socket.on('profileInfoChange', async (data) => {
       const userId = socket.user.id;
       socket.broadcast.emit("userProfileInfoChanged", { userId, data });
+      socketIO.to(socket.user.id).emit("personalChat", {
+        chat: await SocketService.personalChats(socket.user.id)
+      })
     })
 
     socket.on('disconnect', async () => {

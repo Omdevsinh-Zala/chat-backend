@@ -28,6 +28,16 @@ export const update = async (req, res, next) => {
     }
 }
 
+export const uploadProfileImage = async (req, res, next) => {
+    try {
+        const id = req.user.id;
+        const userData = await UserService.uploadProfileImage(id, req.file);
+        return successResponse({ res, data: userData, message: null, statusCode: 201 })
+    } catch(err) {
+        next(err);
+    }
+}
+
 export const getUsers = async (req, res, next) => {
     try {
         const users = await UserService.getUsers(req.query);
