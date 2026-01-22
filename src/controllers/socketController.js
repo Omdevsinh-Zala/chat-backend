@@ -241,9 +241,12 @@ export const setupSocketHandlers = (socketIO) => {
     // User profile changes
     socket.on('profileImageChange', async ({ image }) => {
       const userId = socket.user.id;
-      await UserService.updateUserData(userId, { avatar_url: image });
       socket.broadcast.emit("userImageChanged", { userId, avatar_url: image });
-      socketIO.to(socket.user.id).emit("profileDataChanges", { avatar_url: image });
+    });
+
+    socket.on('profileInfoChange', async (data) => {
+      const userId = socket.user.id;
+      socket.broadcast.emit("userProfileInfoChanged", { userId, data });
     })
 
     socket.on('disconnect', async () => {

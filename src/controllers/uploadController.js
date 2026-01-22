@@ -2,7 +2,6 @@ import { successResponse, errorResponse } from "../utils/response.js";
 import sharp from 'sharp';
 import path from 'path';
 import { generateSmartThumbnail } from '../utils/mediaHelper.js';
-import fs from 'fs';
 
 export const handleUpload = async (req, res) => {
   if (!req.files || req.files.length === 0) {
