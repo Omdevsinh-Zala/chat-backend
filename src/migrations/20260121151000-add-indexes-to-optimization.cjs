@@ -2,7 +2,7 @@
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-    async up(queryInterface, Sequelize) {
+    async up(queryInterface) {
         await queryInterface.addIndex('messages', ['receiver_id'], {
             name: 'messages_receiver_id_index'
         });
@@ -19,7 +19,7 @@ module.exports = {
         });
     },
 
-    async down(queryInterface, Sequelize) {
+    async down(queryInterface) {
         await queryInterface.removeIndex('messages', 'messages_receiver_id_index');
         await queryInterface.removeIndex('messages', 'messages_created_at_index');
         await queryInterface.removeIndex('messages', 'messages_sender_receiver_created_at_index');

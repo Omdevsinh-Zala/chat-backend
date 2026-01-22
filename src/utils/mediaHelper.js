@@ -76,10 +76,7 @@ export const generateSmartThumbnail = async (videoPath, outputDir, baseFilename)
 
     for (const timestamp of validCheckpoints) {
         try {
-            // Format timestamp to HH:MM:SS.mmm for ffmpeg
-            const timeStr = new Date(timestamp * 1000).toISOString().substr(11, 8);
-
-            const tempPath = finalThumbPath; // overwrite checks
+            const tempPath = finalThumbPath;
 
             const command = `"${ffmpegPath}" -y -i "${videoPath}" -ss ${timestamp} -vframes 1 "${tempPath}"`;
             // -y to overwrite

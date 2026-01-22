@@ -8,6 +8,7 @@ import { validate } from "../middlewares/validator.js"
 import * as ChannelValidation from "../validations/user/channelValidation.js"
 import * as SettingsValidation from "../validations/user/settingsValidation.js"
 import * as ChannelManagementValidation from "../validations/user/channelManagementValidation.js"
+import { updateUserValidation } from "../validations/user/updateUserValidation.js";
 
 const router = Router();
 
@@ -16,7 +17,7 @@ router.use(verifyToken);
 router.get('/profile/:id', validate(ChannelValidation.getChannelDataValidators, "params"), UserController.showProfile);
 router.get('/profile', UserController.show);
 
-router.put('/profile', UserController.update);
+router.put('/profile', validate(updateUserValidation), UserController.update);
 
 router.get('/files', UserController.getAllFiles);
 
