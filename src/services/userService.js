@@ -1,5 +1,6 @@
 import { User, Channel, ChannelMember, Message } from "../models/initModels.js"
 import { Op } from "sequelize";
+import bcrypt from "bcrypt";
 import AppError from "../utils/appError.js";
 import { config } from "../config/app.js";
 import { Attachment } from "../models/initModels.js";
@@ -44,16 +45,25 @@ export const getProfileData = async (id) => {
   }
 }
 
-export const updateUserData = async (id, updateUserData) => {
-  await User.update(updateUserData, {
-    where: { id },
+export const updateUserData = async (id, data) => {
+  const { old_password, new_password, ...updates } = data;
+
+  const user = await User.findByPk(id, {
+    attributes: { include: ['password'] }
   });
-  const updatedUser = await User.findByPk(id, {
-    attributes: {
-      exclude: ['password', 'created_at', 'deleted_at', 'updated_at', 'is_blocked', 'version', 'providers', 'login_provider']
-    }
-  });
-  return updatedUser ? updatedUser.toJSON() : null;
+
+  if (!user) throw new AppError("User not found.", 404);
+
+  if (old_password && new_password) {
+    const isMatch = await bcrypt.compare(old_password, user.password);
+    if (!isMatch) throw new AppError("Old password is incorrect.", 400);
+    user.password = new_password;
+  }
+
+  user.set(updates);
+  await user.save();
+
+  return user.toJSON();
 }
 
 export const getUsers = async (query) => {

@@ -8,7 +8,7 @@ import fs from "fs";
 import sharp from "sharp";
 import { Attachment } from "../models/initModels.js";
 import { Op } from "sequelize";
-import { generateSmartThumbnail, isImageUsable } from '../utils/mediaHelper.js';
+import { generateSmartThumbnail } from '../utils/mediaHelper.js';
 
 export const generateThumb = async () => {
     console.log("Running generateThumb script");
