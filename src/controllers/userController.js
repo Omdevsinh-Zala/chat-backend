@@ -3,7 +3,7 @@ import { successResponse } from '../utils/response.js';
 
 export const show = async (req, res, next) => {
     try {
-        const userData = await UserService.getUserData(req.user.id);
+        const userData = await UserService.getUserData(req.user.id, req.b2AuthToken, req.b2ProfileToken);
         return successResponse({ res, data: userData, message: null, statusCode: 200 });
     } catch (err) {
         next(err);
