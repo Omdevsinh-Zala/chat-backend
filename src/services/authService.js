@@ -1,10 +1,9 @@
 import { compare } from "bcrypt";
 import { User, Setting } from "../models/initModels.js";
-import { generateToken } from "./tokenService.js";
+import { b2AuthToken, generateToken, b2ProfileToken } from "./tokenService.js";
 import AppError from "../utils/appError.js";
 import { randomImage } from "../utils/profileImagePicker.js";
 import { config } from "../config/app.js";
-import { b2 } from "../config/b2.js";
 
 export const registerUser = async (data, t) => {
     const user = await User.create({
@@ -43,15 +42,17 @@ export const loginUser = async (data) => {
 
     const userData = user.toJSON();
 
-    const auth = await b2.getDownloadAuthorization({
-        bucketId: config.b2.bucketID,
-        fileNamePrefix: '',
-        validDurationInSeconds: 60 * 60
-    });
+    const path = [userData.id, userData.active_chat_id].sort().join('-');
+    const userPath = `users/${path}`;
 
-    const token = auth.data.authorizationToken;
+    const authToken = await b2AuthToken(userPath, 60 * 60);
+    const profileToken = await b2ProfileToken(60 * 60);
 
-    return { userData, accessToken, refreshToken, token };
+    const token = authToken;
+    userData.token = token;
+    userData.profileToken = profileToken;
+
+    return { userData, accessToken, refreshToken };
 }
 
 export const logoutUser = (res) => {

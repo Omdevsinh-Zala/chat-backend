@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { generateSmartThumbnail } from '../utils/mediaHelper.js';
 import { uploadToB2 } from '../services/b2Upload.js';
+import { generateHash } from "../utils/fileHash.js";
 
 export const handleUpload = async (req, res) => {
   if (!req.files || req.files.length === 0) {
@@ -11,63 +12,68 @@ export const handleUpload = async (req, res) => {
   }
 
   try {
-    const uploadedFiles = await Promise.all(req.files.map(async file => {
-      const { filename, mimetype, size, path: filePath, destination } = file;
-      let fileType = 'file';
-      let thumbUrl = null;
+    const uploadedFiles = await Promise.all(
+      req.files.map(async file => {
+        const { originalname, mimetype, size, buffer } = file;
+        let fileType = 'file';
+        let thumbUrl = null;
 
-      await uploadToB2(filePath, `uploads/${filename}`, mimetype);
+        const hash = await generateHash({ buffer });
+        const ext = path.extname(originalname);
+        const filename = `${hash}${ext}`;
 
-      if(mimetype.split('/')[0] !== 'video') {
-        fs.unlinkSync(filePath);
-      }
+        const chatPath = req.body.chatPath;
+        const b2FilePath = `${chatPath}/${filename}`;
 
-      if (mimetype.startsWith('image/')) {
-        fileType = 'image';
-        // Generate thumbnail
-        const thumbFilename = `thumb_${filename}`;
-        const thumbPath = path.join(destination, thumbFilename);
+        await uploadToB2({ buffer }, b2FilePath, mimetype);
 
-        try {
-          await sharp(filePath)
-            .resize(300, 300, { fit: 'inside' })
-            .toFile(thumbPath);
+        if (mimetype.startsWith('image/')) {
+          fileType = 'image';
+          try {
+            const thumbBuffer = await sharp(buffer)
+              .webp({ quality: 85 }).toBuffer();
 
-          thumbUrl = `thumbs/${thumbFilename}`;
-          await uploadToB2(thumbPath, `thumbs/${thumbFilename}`, mimetype);
-        } catch (sharpError) {
-          console.error("Error generating thumbnail:", sharpError);
-        }
-      }
-      else if (mimetype.startsWith('video/')) {
-        fileType = 'video';
-
-        try {
-          // Generate smart thumbnail (avoids black screens)
-          const generatedThumbName = await generateSmartThumbnail(filePath, destination, filename);
-
-          if (generatedThumbName) {
-            thumbUrl = `thumbs/videos/${generatedThumbName}`;
-            await uploadToB2(path.join(destination, generatedThumbName), `thumbs/videos/${generatedThumbName}`, mimetype);
-
-            fs.unlinkSync(path.join(destination, generatedThumbName));
-            fs.unlinkSync(filePath);
+            thumbUrl = `${chatPath}/thumbs/${filename}`;
+            await uploadToB2({ buffer: thumbBuffer }, thumbUrl, 'image/webp');
+          } catch (sharpError) {
+            console.error("Error generating thumbnail:", sharpError);
           }
-        } catch (ffmpegError) {
-          console.error("Error generating video thumbnail:", ffmpegError);
         }
-      }
-      else if (mimetype === 'application/pdf') fileType = 'pdf';
+        else if (mimetype.startsWith('video/')) {
+          fileType = 'video';
 
-      return {
-        file_url: `uploads/${filename}`,
-        thumbnail_url: thumbUrl,
-        file_type: fileType,
-        file_name: file.originalname,
-        file_size: size,
-        mime_type: mimetype
-      };
-    }));
+          try {
+            // Generate smart thumbnail (avoids black screens)
+            const generatedThumbName = await generateSmartThumbnail(buffer, filename);
+
+            const currentDir = path.join(process.cwd(), 'tmp-thumbs');
+            const destination = path.join(currentDir, generatedThumbName);
+
+            const thumbHash = await generateHash({ filePath: destination });
+            const thumbExt = path.extname(generatedThumbName);
+            const thumbFilename = `${thumbHash}${thumbExt}`;
+
+            if (generatedThumbName) {
+              thumbUrl = `${chatPath}/thumbs/${thumbFilename}`;
+              await uploadToB2({ path: destination }, thumbUrl, 'image/webp');
+              fs.unlinkSync(destination);
+            }
+          } catch (ffmpegError) {
+            console.error("Error generating video thumbnail:", ffmpegError);
+          }
+        }
+        else if (mimetype === 'application/pdf') fileType = 'pdf';
+
+        return {
+          file_url: b2FilePath,
+          thumbnail_url: thumbUrl,
+          file_type: fileType,
+          file_name: file.originalname,
+          file_size: size,
+          mime_type: mimetype
+        };
+      })
+    );
 
     return successResponse({ res, data: { files: uploadedFiles }, message: null, statusCode: 200 });
   } catch (err) {

@@ -2,8 +2,13 @@ import fs from 'fs/promises';
 import { b2 } from '../config/b2.js';
 import { config } from '../config/app.js';
 
-export async function uploadToB2(localFilePath, remoteFileName, mimeType) {
-  const fileBuffer = await fs.readFile(localFilePath);
+export async function uploadToB2({ buffer, path }, remoteFileName, mimeType) {
+  let fileBuffer = '';
+  if (buffer) {
+    fileBuffer = buffer;
+  } else {
+    fileBuffer = await fs.readFile(path);
+  }
 
   const uploadUrlResponse = await b2.getUploadUrl({
     bucketId: config.b2.bucketID

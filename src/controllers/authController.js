@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import logger from "../config/logger.js";
 import * as LoginService from "../services/authService.js";
-import { generateToken } from "../services/tokenService.js";
+import { b2AuthToken, b2ProfileToken, generateToken } from "../services/tokenService.js";
 import { sequelize } from "../models/index.js";
 import { config } from "../config/app.js";
 import AppError from "../utils/appError.js";
@@ -28,7 +28,7 @@ export const registerUser = async (req, res, next) => {
 
 export const loginUser = async (req, res, next) => {
     try {
-        const { userData, accessToken, refreshToken, token } = await LoginService.loginUser(req.body, res);
+        const { userData, accessToken, refreshToken } = await LoginService.loginUser(req.body, res);
 
         res.status(200).cookie('access_token', accessToken, {
             httpOnly: true,
@@ -42,18 +42,18 @@ export const loginUser = async (req, res, next) => {
                 sameSite: config.env === 'development' ? 'lax' : 'none',
                 maxAge: 24 * 3600000
             });
-        return successResponse({ res, data: { ...userData, token }, message: "Login successful.", statusCode: 200 });
+        return successResponse({ res, data: userData, message: "Login successful.", statusCode: 200 });
     } catch (err) {
         logger.error(err.message)
         next(err);
     }
 }
 
-export const refreshToken = (req, res, next) => {
+export const refreshToken = async (req, res, next) => {
     const refreshToken = req.cookies.refresh_token;
     if (!refreshToken) return res.status(401).send("No refresh token");
 
-    jwt.verify(refreshToken, config.jwt.refresh.secret, (err, decoded) => {
+    jwt.verify(refreshToken, config.jwt.refresh.secret, async (err, decoded) => {
         if (err) return next(new AppError("Invalid refresh token", 403));
 
         const newAccessToken = generateToken({ id: decoded.id, email: decoded.email }, "access");
@@ -65,7 +65,10 @@ export const refreshToken = (req, res, next) => {
             maxAge: 1000 * 60 * 15
         });
 
-        return successResponse({ res, data: null, message: null, statusCode: 200 });
+        const token = await b2AuthToken('', 60 * 60);
+        const refreshToken = await b2ProfileToken(60 * 60);
+
+        return successResponse({ res, data: { token, refreshToken }, message: null, statusCode: 200 });
     });
 }
 

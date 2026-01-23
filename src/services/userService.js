@@ -1,14 +1,16 @@
-import { User, Channel, ChannelMember, Message } from "../models/initModels.js"
 import { Op } from "sequelize";
 import bcrypt from "bcrypt";
+import path from "path";
+import { User, Channel, ChannelMember, Message } from "../models/initModels.js"
 import AppError from "../utils/appError.js";
 import { config } from "../config/app.js";
 import { Attachment } from "../models/initModels.js";
 import logger from "../config/logger.js";
 import { randomImage } from "../utils/profileImagePicker.js";
 import { removeFromB2, uploadToB2 } from "./b2Upload.js";
+import { generateHash } from "../utils/fileHash.js";
 
-export const getUserData = async (id) => {
+export const getUserData = async (id, b2Token, profileToken) => {
   try {
     const rawData = await User.findByPk(id);
     if (!rawData) throw new AppError("User not found.", 404);
@@ -17,6 +19,9 @@ export const getUserData = async (id) => {
     if (userData.is_blocked) {
       throw new AppError("Your account has been blocked. Please contact support.", 403);
     }
+
+    userData.token = b2Token;
+    userData.profileToken = profileToken;
 
     return userData;
   } catch (err) {
@@ -68,8 +73,11 @@ export const updateUserData = async (id, data) => {
 }
 
 export const uploadProfileImage = async (id, files) => {
-  const { filename, mimetype } = files;
-  await uploadToB2(filename, `profile/${filename}`, mimetype);
+  const { mimetype, buffer, originalname } = files;
+  const hash = await generateHash({ buffer });
+  const ext = path.extname(originalname);
+  const filename = `${hash}${ext}.webp`;
+  await uploadToB2({ buffer }, `profileImages/${filename}`, mimetype);
   const user = await User.findByPk(id);
   const previousImage = user.avatar_url;
   user.set({ avatar_url: filename });

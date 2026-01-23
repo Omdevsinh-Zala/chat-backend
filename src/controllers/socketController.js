@@ -1,6 +1,11 @@
 import * as SocketService from '../services/socketService.js';
 import * as ChannelSocketService from '../services/channelService.js';
 import * as NotificationService from '../services/notificationService.js';
+import cookie from 'cookie';
+import jwt from 'jsonwebtoken';
+import { config } from '../config/app.js';
+import logger from '../config/logger.js';
+import { b2AuthToken } from '../services/tokenService.js'
 
 export const setupSocketHandlers = (socketIO) => {
   socketIO.on('connection', async (socket) => {
@@ -16,6 +21,43 @@ export const setupSocketHandlers = (socketIO) => {
         socket.join(channel.id);
       });
     }
+
+    let remainingTime = 0;
+
+    socket.use(([_event, _args], next) => {
+      const cookies = cookie.parse(socket.handshake?.headers?.cookie || "");
+      const accessToken = cookies?.access_token;
+      const refreshToken = cookies?.refresh_token;
+
+      if (!accessToken && !refreshToken) {
+        const error = new Error("No tokens provided!");
+        error.data = { statusCode: 401 };
+        return next(error);
+      }
+
+      jwt.verify(accessToken, config.jwt.access.secret, (error, decoded) => {
+        if (error) {
+          const socketError = new Error();
+          if (error.name === "TokenExpiredError") {
+            socketError.message = "Access token has expired.";
+            socketError.data = { statusCode: 401 };
+          } else if (error.name === "JsonWebTokenError") {
+            socketError.message = "Invalid access token.";
+            socketError.data = { statusCode: 401 };
+          } else {
+            logger.error("Access token verification error:", error);
+            socketError.message = "Internal server error during token verification.";
+            socketError.data = { statusCode: 500 };
+          }
+          return next(socketError);
+        }
+        socket.user = decoded;
+        const currentTime = Math.floor(Date.now() / 1000);
+        const expiresAt = decoded.exp;
+        remainingTime = expiresAt - currentTime;
+        return next();
+      });
+    });
 
     // Emit initial data
     socketIO.to(socket.user.id).emit("channels", {
@@ -139,7 +181,8 @@ export const setupSocketHandlers = (socketIO) => {
       await SocketService.UpdateUserActiveChatId(senderId, channelId, true);
       socketIO.to(socket.user.id).emit('channelChatMessages', {
         chat: await ChannelSocketService.getChannelChatMessages(senderId, channelId, null),
-        channelData: await ChannelSocketService.getChannelData(channelId)
+        channelData: await ChannelSocketService.getChannelData(channelId),
+        b2AuthToken: await b2AuthToken(`channels/${channelId}`, remainingTime),
       });
     });
 
@@ -188,10 +231,13 @@ export const setupSocketHandlers = (socketIO) => {
     // --- User Chat Handlers ---
     socket.on('chatChange', async ({ receiverId }) => {
       const senderId = socket.user.id;
+      const users = [senderId, receiverId].sort().join('-');
+      const userPath = `users/${users}`;
       await SocketService.UpdateUserActiveChatId(senderId, receiverId, false);
       socketIO.to(socket.user.id).emit('chatMessages', {
         chat: await SocketService.getChatMessages(receiverId, senderId, null),
-        receiverData: await SocketService.getReceiverData(receiverId)
+        receiverData: await SocketService.getReceiverData(receiverId),
+        b2AuthToken: await b2AuthToken(userPath, remainingTime),
       });
     });
 

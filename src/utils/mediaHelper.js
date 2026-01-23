@@ -1,35 +1,54 @@
 import ffmpegPath from 'ffmpeg-static';
-import { exec } from 'child_process';
-import util from 'util';
+import { spawn } from 'child_process';
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
 
-const execPromise = util.promisify(exec);
-
 /**
- * Extracts video duration in seconds.
- * Uses ffmpeg output parsing since we might not have ffprobe.
+ * Extracts video duration in seconds using ffmpeg-static with buffer (no file writes).
  */
-export const getVideoDuration = async (filePath) => {
-    try {
-        const command = `"${ffmpegPath}" -i "${filePath}"`;
-        // ffmpeg outputs info to stderr even without input options
-        const { stderr } = await execPromise(command).catch(err => err); // catch because ffmpeg errors without output file
+export const getVideoDuration = async (buffer) => {
+  return new Promise((resolve) => {
+    const process = spawn(ffmpegPath, [
+      '-i', 'pipe:0',
+      '-f', 'null',
+      '-'
+    ]);
 
-        // Look for "Duration: 00:00:05.32"
-        const match = stderr.match(/Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})/);
-        if (match) {
-            const hours = parseFloat(match[1]);
-            const minutes = parseFloat(match[2]);
-            const seconds = parseFloat(match[3]);
-            return (hours * 3600) + (minutes * 60) + seconds;
-        }
-        return 0;
-    } catch (error) {
-        console.error("Error getting video duration:", error);
-        return 0;
-    }
+    let stderrOutput = '';
+
+    process.stderr.on('data', (data) => {
+      stderrOutput += data.toString();
+    });
+
+    process.on('close', () => {
+      // Extract duration from format: Duration: HH:MM:SS.ms
+      const match = stderrOutput.match(/Duration:\s*(\d{2}):(\d{2}):(\d{2}\.\d{2})/);
+      
+      if (match) {
+        const hours = parseInt(match[1], 10);
+        const minutes = parseInt(match[2], 10);
+        const seconds = parseFloat(match[3]);
+        
+        const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+        resolve(totalSeconds);
+      } else {
+        resolve(0);
+      }
+    });
+
+    process.on('error', (error) => {
+      console.error('Error spawning ffmpeg:', error);
+      resolve(0);
+    });
+
+    process.stdin.on('error', () => {
+      // Ignore stdin errors
+    });
+
+    // Write the entire buffer at once and immediately close
+    process.stdin.end(buffer);
+  });
 };
 
 /**
@@ -57,12 +76,8 @@ export const isImageUsable = async (imagePath) => {
  * Generates a usable thumbnail for a video.
  * Tries multiple timestamps if the first one yields a black frame.
  */
-export const generateSmartThumbnail = async (videoPath, outputDir, baseFilename) => {
-  // ensure output folder exists
-  fs.mkdirSync(outputDir, { recursive: true });
-
-  const duration = await getVideoDuration(videoPath);
-
+export const generateSmartThumbnail = async (buffer, baseFilename) => {
+  const duration = await getVideoDuration(buffer);
   const checkpoints = [1];
   if (duration > 5) {
     checkpoints.push(duration * 0.2, duration * 0.5);
@@ -74,19 +89,20 @@ export const generateSmartThumbnail = async (videoPath, outputDir, baseFilename)
 
   if (validCheckpoints.length === 0) validCheckpoints.push(0);
 
+  const outputDir = path.join(process.cwd(), 'tmp-thumbs');
+  fs.mkdirSync(outputDir, { recursive: true });
+
   const finalThumbFilename = `thumb_${baseFilename}.jpg`;
   const finalThumbPath = path.join(outputDir, finalThumbFilename);
 
   for (const timestamp of validCheckpoints) {
-    // temp file per attempt
     const tempPath = path.join(
       outputDir,
       `.__tmp_thumb_${timestamp.toFixed(2)}.jpg`
     );
 
     try {
-      const command = `"${ffmpegPath}" -y -ss ${timestamp} -i "${videoPath}" -frames:v 1 -update 1 "${tempPath}"`;
-      await execPromise(command);
+      await extractFrameAtTimestamp(buffer, timestamp, tempPath);
 
       if (await isImageUsable(tempPath)) {
         fs.renameSync(tempPath, finalThumbPath);
@@ -99,6 +115,44 @@ export const generateSmartThumbnail = async (videoPath, outputDir, baseFilename)
     }
   }
 
-  return fs.existsSync(finalThumbPath) ? finalThumbFilename : null;
+  return null;
 };
 
+// Helper function to extract frame using spawn
+const extractFrameAtTimestamp = (buffer, timestamp, outputPath) => {
+  return new Promise((resolve, reject) => {
+    const process = spawn(ffmpegPath, [
+      '-y',
+      '-ss', timestamp.toString(),
+      '-i', 'pipe:0',
+      '-frames:v', '1',
+      '-update', '1',
+      outputPath
+    ]);
+
+    let stderrOutput = '';
+
+    process.stderr.on('data', (data) => {
+      stderrOutput += data.toString();
+    });
+
+    process.on('close', (code) => {
+      if (code === 0 && fs.existsSync(outputPath)) {
+        resolve();
+      } else {
+        reject(new Error(`ffmpeg exited with code ${code}: ${stderrOutput}`));
+      }
+    });
+
+    process.on('error', (error) => {
+      reject(error);
+    });
+
+    process.stdin.on('error', () => {
+      // Ignore stdin errors
+    });
+
+    // Write buffer to stdin
+    process.stdin.end(buffer);
+  });
+};
