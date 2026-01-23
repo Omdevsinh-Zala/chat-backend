@@ -37,5 +37,11 @@ export const config = {
         public_key: process.env.VAPID_PUBLIC_KEY,
         private_key: process.env.VAPID_PRIVATE_KEY
     },
-    profileImagePrefix: process.env.PROFILE_IMAGE_PATH
+    profileImagePrefix: process.env.PROFILE_IMAGE_PATH,
+    b2: {
+        keyID: process.env.B2_KEY_ID,
+        appKey: process.env.B2_APP_KEY,
+        bucketID: process.env.B2_BUCKET_ID,
+        bucketName: process.env.B2_BUCKET_NAME,
+    }
 }
