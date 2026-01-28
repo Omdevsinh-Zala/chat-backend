@@ -5,33 +5,28 @@ import fs from 'fs';
 import path from 'path';
 
 /**
- * Extracts video duration in seconds using ffmpeg-static with buffer (no file writes).
+ * Extracts video duration in seconds using ffmpeg-static.
  */
-export const getVideoDuration = async (buffer) => {
+export const getVideoDuration = async (filePath) => {
   return new Promise((resolve) => {
     const process = spawn(ffmpegPath, [
-      '-i', 'pipe:0',
+      '-i', filePath,
       '-f', 'null',
       '-'
     ]);
 
     let stderrOutput = '';
-
     process.stderr.on('data', (data) => {
       stderrOutput += data.toString();
     });
 
     process.on('close', () => {
-      // Extract duration from format: Duration: HH:MM:SS.ms
       const match = stderrOutput.match(/Duration:\s*(\d{2}):(\d{2}):(\d{2}\.\d{2})/);
-      
       if (match) {
         const hours = parseInt(match[1], 10);
         const minutes = parseInt(match[2], 10);
         const seconds = parseFloat(match[3]);
-        
-        const totalSeconds = hours * 3600 + minutes * 60 + seconds;
-        resolve(totalSeconds);
+        resolve(hours * 3600 + minutes * 60 + seconds);
       } else {
         resolve(0);
       }
@@ -41,97 +36,112 @@ export const getVideoDuration = async (buffer) => {
       console.error('Error spawning ffmpeg:', error);
       resolve(0);
     });
-
-    process.stdin.on('error', () => {
-      // Ignore stdin errors
-    });
-
-    // Write the entire buffer at once and immediately close
-    process.stdin.end(buffer);
   });
 };
 
 /**
- * Checks if an image is "good" (not too dark).
- * Returns true if usable, false if too dark.
+ * Calculates the average brightness of an image.
+ * Returns a score (0-255).
  */
-export const isImageUsable = async (imagePath) => {
-    try {
-        if (!fs.existsSync(imagePath)) return false;
-
-        const stats = await sharp(imagePath).stats();
-        // Check average brightness of channels. If all are excessively dark, return false.
-        // stats.channels array: [ { mean, stdev, min, max }, ... ] for r, g, b
-        // A completely black image has mean 0. A very dark one might be < 10 or 15.
-
-        const isTooDark = stats.channels.every(c => c.mean < 15);
-        return !isTooDark;
-    } catch (error) {
-        console.error("Error analyzing image brightness:", error);
-        return true; // Assume usable if we fail to check, to avoid infinite loops or no thumb
-    }
+export const getImageBrightness = async (imagePath) => {
+  try {
+    if (!fs.existsSync(imagePath)) return 0;
+    const stats = await sharp(imagePath).stats();
+    // Return average of R, G, B channel means
+    return stats.channels.reduce((sum, c) => sum + c.mean, 0) / stats.channels.length;
+  } catch (error) {
+    console.error("Error calculating brightness:", error);
+    return 0;
+  }
 };
 
 /**
  * Generates a usable thumbnail for a video.
- * Tries multiple timestamps if the first one yields a black frame.
+ * Analyzes multiple timestamps and picks the brightest frame.
  */
 export const generateSmartThumbnail = async (buffer, baseFilename) => {
-  const duration = await getVideoDuration(buffer);
-  const checkpoints = [1];
-  if (duration > 5) {
-    checkpoints.push(duration * 0.2, duration * 0.5);
-  }
-
-  const validCheckpoints = checkpoints
-    .filter(t => t < duration)
-    .map(t => Math.max(0, t));
-
-  if (validCheckpoints.length === 0) validCheckpoints.push(0);
-
   const outputDir = path.join(process.cwd(), 'tmp-thumbs');
-  fs.mkdirSync(outputDir, { recursive: true });
+  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
-  const finalThumbFilename = `thumb_${baseFilename}.jpg`;
-  const finalThumbPath = path.join(outputDir, finalThumbFilename);
+  const uniqueId = `${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  const tempVideoPath = path.join(outputDir, `.__tmp_vid_${uniqueId}_${baseFilename}`);
+  fs.writeFileSync(tempVideoPath, buffer);
 
-  for (const timestamp of validCheckpoints) {
-    const tempPath = path.join(
-      outputDir,
-      `.__tmp_thumb_${timestamp.toFixed(2)}.jpg`
-    );
+  const candidates = [];
 
-    try {
-      await extractFrameAtTimestamp(buffer, timestamp, tempPath);
+  try {
+    const duration = await getVideoDuration(tempVideoPath);
+    const timestamps = [1]; // Always try 1s mark
+    if (duration > 5) {
+      timestamps.push(duration * 0.2, duration * 0.5, duration * 0.8);
+    }
 
-      if (await isImageUsable(tempPath)) {
-        fs.renameSync(tempPath, finalThumbPath);
-        return finalThumbFilename;
+    const uniqueTimestamps = [...new Set(timestamps)]
+      .filter(t => t < duration)
+      .map(t => Math.max(0, t));
+
+    if (uniqueTimestamps.length === 0) uniqueTimestamps.push(0);
+
+    for (const timestamp of uniqueTimestamps) {
+      const tempThumbPath = path.join(outputDir, `.__tmp_thumb_${uniqueId}_${timestamp.toFixed(2)}.jpg`);
+      try {
+        await extractFrameAtTimestamp(tempVideoPath, timestamp, tempThumbPath);
+        if (fs.existsSync(tempThumbPath)) {
+          const brightness = await getImageBrightness(tempThumbPath);
+          candidates.push({ path: tempThumbPath, brightness });
+        }
+      } catch (e) {
+        console.error(`Failed to extract frame at ${timestamp}:`, e);
       }
+    }
 
-      fs.existsSync(tempPath) && fs.unlinkSync(tempPath);
-    } catch (e) {
-      console.error(`Error processing video frame at ${timestamp}:`, e);
+    if (candidates.length === 0) return null;
+
+    // Pick the brightest candidate
+    candidates.sort((a, b) => b.brightness - a.brightness);
+    const bestCandidate = candidates[0];
+
+    // Final thumbnail name (use .webp for quality and consistency)
+    const finalThumbFilename = `thumb_${baseFilename.split('.')[0]}.webp`;
+    const finalThumbPath = path.join(outputDir, finalThumbFilename);
+
+    // Process with Sharp for high quality WebP
+    await sharp(bestCandidate.path)
+      .webp({ quality: 90 })
+      .toFile(finalThumbPath);
+
+    // Cleanup all candidate files
+    candidates.sort((a, b) => b.brightness - a.brightness);
+    candidates.forEach(c => {
+      if (fs.existsSync(c.path)) {
+        try { fs.unlinkSync(c.path); } catch (e) { }
+      }
+    });
+
+    return finalThumbFilename;
+
+  } finally {
+    // Cleanup temporary video file
+    if (fs.existsSync(tempVideoPath)) {
+      fs.unlinkSync(tempVideoPath);
     }
   }
-
-  return null;
 };
 
 // Helper function to extract frame using spawn
-const extractFrameAtTimestamp = (buffer, timestamp, outputPath) => {
+const extractFrameAtTimestamp = (videoPath, timestamp, outputPath) => {
   return new Promise((resolve, reject) => {
     const process = spawn(ffmpegPath, [
       '-y',
       '-ss', timestamp.toString(),
-      '-i', 'pipe:0',
+      '-i', videoPath,
       '-frames:v', '1',
-      '-update', '1',
+      '-q:v', '2', // High quality extraction
+      '-vf', 'scale=1280:-1', // Higher resolution
       outputPath
     ]);
 
     let stderrOutput = '';
-
     process.stderr.on('data', (data) => {
       stderrOutput += data.toString();
     });
@@ -140,19 +150,12 @@ const extractFrameAtTimestamp = (buffer, timestamp, outputPath) => {
       if (code === 0 && fs.existsSync(outputPath)) {
         resolve();
       } else {
-        reject(new Error(`ffmpeg exited with code ${code}: ${stderrOutput}`));
+        const errorMsg = `ffmpeg exited with code ${code}. Stderr: ${stderrOutput}`;
+        console.error(errorMsg);
+        reject(new Error(errorMsg));
       }
     });
 
-    process.on('error', (error) => {
-      reject(error);
-    });
-
-    process.stdin.on('error', () => {
-      // Ignore stdin errors
-    });
-
-    // Write buffer to stdin
-    process.stdin.end(buffer);
+    process.on('error', reject);
   });
 };

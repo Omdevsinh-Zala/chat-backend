@@ -13,6 +13,7 @@ export async function uploadToB2({ buffer, path }, remoteFileName, mimeType) {
   const uploadUrlResponse = await b2.getUploadUrl({
     bucketId: config.b2.bucketID
   });
+
   await b2.uploadFile({
     uploadUrl: uploadUrlResponse.data.uploadUrl,
     uploadAuthToken: uploadUrlResponse.data.authorizationToken,
