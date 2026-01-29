@@ -172,6 +172,50 @@ export const setupSocketHandlers = (socketIO) => {
       }
     });
 
+    socket.on('createChannelInvite', async ({ channelId }) => {
+      const issuerId = socket.user.id;
+      const { invite, error } = await ChannelSocketService.createChannelInvite(issuerId, channelId);
+
+      if (error) {
+        socketIO.to(issuerId).emit('createChannelInviteError', { error });
+        return;
+      }
+
+      socketIO.to(issuerId).emit('channelInviteCreated', { invite });
+    });
+
+    socket.on('validateInviteToken', async ({ token }) => {
+      const senderId = socket.user.id;
+      const { channel, error } = await ChannelSocketService.validateInviteToken(token);
+
+      if (error) {
+        socketIO.to(senderId).emit('validateInviteTokenError', { error });
+        return;
+      }
+
+      socketIO.to(senderId).emit('inviteTokenValid', { channel });
+    });
+
+    socket.on('joinByInviteToken', async ({ token }) => {
+      const userId = socket.user.id;
+      const { result, channelId, alreadyMember, error } = await ChannelSocketService.joinChannelByInvite(userId, token);
+
+      if (error) {
+        socketIO.to(userId).emit('joinByInviteTokenError', { error });
+        return;
+      }
+
+      if (alreadyMember) {
+        socketIO.to(userId).emit('redirectToChannel', { redirectId: channelId });
+        return;
+      }
+
+      socket.join(channelId);
+      socketIO.to(userId).emit("channels", { channels: await ChannelSocketService.userChannels(userId) });
+      socketIO.to(channelId).emit('receiveChannelChatMessage', { chat: result });
+      socketIO.to(userId).emit('redirectToChannel', { redirectId: channelId });
+    });
+
     socket.on('channelCreated', async () => {
       socketIO.to(socket.user.id).emit("channels", { channels: await ChannelSocketService.userChannels(socket.user.id) });
     });
