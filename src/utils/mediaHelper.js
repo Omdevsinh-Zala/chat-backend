@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
+import logger from '../config/logger.js';
 
 /**
  * Extracts video duration in seconds using ffmpeg-static.
@@ -114,7 +115,9 @@ export const generateSmartThumbnail = async (buffer, baseFilename) => {
     candidates.sort((a, b) => b.brightness - a.brightness);
     candidates.forEach(c => {
       if (fs.existsSync(c.path)) {
-        try { fs.unlinkSync(c.path); } catch (e) { }
+        try { fs.unlinkSync(c.path); } catch (e) {
+          logger.error(`Failed to delete candidate file ${c.path}:`, e);
+        }
       }
     });
 

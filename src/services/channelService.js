@@ -1,9 +1,10 @@
 import { config } from "../config/app.js";
-import { Channel, Attachment, Message, ChannelMember, User } from "../models/initModels.js";
+import { Channel, Attachment, Message, ChannelMember, User, ChannelInvitation } from "../models/initModels.js";
 import { Op } from "sequelize";
 import logger from "../config/logger.js";
 import { v4 as uuidv4 } from 'uuid';
 import AppError from "../utils/appError.js";
+import { sequelize } from "../models/index.js";
 
 export const userChannels = async (id) => {
   const channels = await Channel.findAll({
@@ -469,5 +470,140 @@ export const updateMemberRole = async (requesterId, channelId, userId, role) => 
       stack: err.stack,
     });
     return { result: null, error: err.message, previousOwnerId: null };
+  }
+}
+
+export const createChannelInvite = async (issuerId, channelId) => {
+  try {
+    const channel = await Channel.findByPk(channelId);
+    if (!channel) throw new AppError('Channel not found.', 404);
+
+    const issuerMember = await ChannelMember.findOne({ where: { user_id: issuerId, channel_id: channelId } });
+    if (!issuerMember || (issuerMember.role !== 'owner' && issuerMember.role !== 'admin')) {
+      throw new AppError('Only owners and admins can create invite links.', 403);
+    }
+
+    const token = uuidv4();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // Default 7 days expiry
+
+    const invite = await ChannelInvitation.create({
+      channel_id: channelId,
+      inviter_id: issuerId,
+      token,
+      expires_at: expiresAt
+    });
+
+    return { invite, error: null };
+  } catch (err) {
+    logger.error(`Failed to create invite: ${err.message}`, { stack: err.stack });
+    return { invite: null, error: err.message };
+  }
+}
+
+export const validateInviteToken = async (token) => {
+  try {
+    const invite = await ChannelInvitation.findOne({
+      where: { token, is_used: false },
+      include: [
+        {
+          model: Channel,
+          include: [
+            {
+              model: ChannelMember,
+              attributes: ['id']
+            }
+          ]
+        }
+      ]
+    });
+
+    if (!invite) throw new AppError('Invalid or expired invitation link.', 404);
+
+    if (invite.expires_at && new Date() > new Date(invite.expires_at)) {
+      throw new AppError('This invitation link has expired.', 400);
+    }
+
+    const channelData = invite.Channel.toJSON();
+    channelData.memberCount = channelData.ChannelMembers.length;
+    delete channelData.ChannelMembers;
+
+    return { channel: channelData, error: null };
+  } catch (err) {
+    logger.error(`Failed to validate invite token: ${err.message}`);
+    return { channel: null, error: err.message };
+  }
+}
+
+export const joinChannelByInvite = async (userId, token) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const invite = await ChannelInvitation.findOne({
+      where: { token, is_used: false },
+      transaction
+    });
+
+    if (!invite) {
+      if (transaction) await transaction.rollback();
+      throw new AppError('Invalid or expired invitation link.', 404);
+    }
+
+    if (invite.expires_at && new Date() > new Date(invite.expires_at)) {
+      if (transaction) await transaction.rollback();
+      throw new AppError('This invitation link has expired.', 400);
+    }
+
+    const channelId = invite.channel_id;
+
+    // Check if user is already a member
+    const existingMember = await ChannelMember.findOne({
+      where: { user_id: userId, channel_id: channelId },
+      transaction
+    });
+
+    if (existingMember) {
+      if (transaction) await transaction.rollback();
+      return { channelId, alreadyMember: true, error: null };
+    }
+
+    // Join channel
+    await ChannelMember.create({
+      channel_id: channelId,
+      user_id: userId,
+      role: 'member',
+      invite_by: invite.inviter_id
+    }, { transaction });
+
+    // Mark token as used (single-use requirement)
+    await invite.update({ is_used: true }, { transaction });
+
+    // Create system message
+    const user = await User.findByPk(userId, { transaction });
+    if (!user) {
+      if (transaction) await transaction.rollback();
+      throw new AppError('User not found.', 404);
+    }
+
+    const messageData = await Message.create({
+      sender_id: userId,
+      channel_id: channelId,
+      content: `${user.full_name} joined via invite link.`,
+      message_type: 'system',
+    }, { transaction });
+
+    await transaction.commit();
+
+    const date = new Date(messageData.created_at);
+    const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric', day: 'numeric' });
+    const result = {
+      monthYear,
+      messages: [messageData.toJSON()]
+    };
+
+    return { result, channelId, error: null };
+  } catch (err) {
+    if (transaction) await transaction.rollback();
+    logger.error(`Failed to join via invite: ${err.message}`);
+    return { result: null, channelId: null, error: err.message };
   }
 }

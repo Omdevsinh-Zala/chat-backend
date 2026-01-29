@@ -7,6 +7,7 @@ import { NotificationPreference } from "./NotificationPreferences.js";
 import { Setting } from "./Settings.js";
 import { Attachment } from "./Attachments.js";
 import { PushSubscription } from "./PushSubscription.js";
+import { ChannelInvitation } from "./ChannelInvitations.js";
 
 // Create models object
 const models = {
@@ -18,7 +19,8 @@ const models = {
     NotificationPreference,
     Setting,
     Attachment,
-    PushSubscription
+    PushSubscription,
+    ChannelInvitation
 };
 
 // Initialize associations
@@ -29,4 +31,4 @@ Object.keys(models).forEach(modelName => {
 });
 
 // Export all models with associations initialized
-export { User, Channel, ChannelMember, Message, Notification, NotificationPreference, Setting, Attachment, PushSubscription };
+export { User, Channel, ChannelMember, Message, Notification, NotificationPreference, Setting, Attachment, PushSubscription, ChannelInvitation };
