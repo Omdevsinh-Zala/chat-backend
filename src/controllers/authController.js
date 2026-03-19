@@ -86,17 +86,24 @@ export const checkUsername = async (req, res, next) => {
     try {
         const { username } = req.query;
         const accessToken = req.cookies?.access_token;
+        let isAvailable = true;
 
-        jwt.verify(accessToken, config.jwt.access.secret, (error, decoded) => {
-            if (error) {
-                req.user.id = null;
-            }
-            req.user = decoded;
-        });
-        const id = req.user.id;
-        const user = await LoginService.checkUsername(id, username);
-        const isAvailable = !user;
-        return successResponse({ res, data: { isAvailable }, message: null, statusCode: 200 });
+        if(accessToken) {
+            jwt.verify(accessToken, config.jwt.access.secret, (error, decoded) => {
+                if (error) {
+                    req.user.id = null;
+                }
+                req.user = decoded;
+            });
+            const id = req.user.id;
+            const user = await LoginService.checkUsername(id, username);
+            isAvailable = !user;
+            return successResponse({ res, data: { isAvailable }, message: null, statusCode: 200 });
+        } else {
+            const user = await LoginService.checkUsername(null, username);
+            isAvailable = !user;
+            return successResponse({ res, data: { isAvailable }, message: null, statusCode: 200 });
+        }
     } catch (err) {
         logger.error(err.message);
         return next(err);
