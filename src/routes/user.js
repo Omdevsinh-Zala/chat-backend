@@ -10,14 +10,15 @@ import * as SettingsValidation from "../validations/user/settingsValidation.js"
 import * as ChannelManagementValidation from "../validations/user/channelManagementValidation.js"
 import { updateUserValidation } from "../validations/user/updateUserValidation.js";
 import { multerUpload } from "../utils/fileUpload.js";
-import { b2TokenMiddleware } from "../middlewares/b2TokenMiddleware.js";
+// import { b2TokenMiddleware } from "../middlewares/b2TokenMiddleware.js";
 
 const router = Router();
 
 router.use(verifyToken);
 
 router.get('/profile/:id', validate(ChannelValidation.getChannelDataValidators, "params"), UserController.showProfile);
-router.get('/profile', b2TokenMiddleware, UserController.show);
+// router.get('/profile', b2TokenMiddleware, UserController.show);
+router.get('/profile', UserController.show);
 
 router.put('/profile', validate(updateUserValidation), UserController.update);
 router.post('/profile/avatar', multerUpload.single('file'), UserController.uploadProfileImage);

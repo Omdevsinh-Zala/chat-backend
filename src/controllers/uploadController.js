@@ -3,7 +3,7 @@ import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
 import { generateSmartThumbnail } from '../utils/mediaHelper.js';
-import { uploadToB2 } from '../services/b2Upload.js';
+// import { uploadToB2 } from '../services/b2Upload.js';
 import { generateHash } from "../utils/fileHash.js";
 
 export const handleUpload = async (req, res) => {
@@ -27,7 +27,7 @@ export const handleUpload = async (req, res) => {
 
         // Prepare upload tasks
         const uploadTasks = [
-          uploadToB2({ buffer }, b2FilePath, mimetype)
+          // uploadToB2({ buffer }, b2FilePath, mimetype)
         ];
 
         let thumbnailPromise = null;
@@ -38,7 +38,7 @@ export const handleUpload = async (req, res) => {
             try {
               const thumbBuffer = await sharp(buffer).webp({ quality: 90 }).toBuffer();
               thumbUrl = `${chatPath}/thumbs/${filename}`;
-              await uploadToB2({ buffer: thumbBuffer }, thumbUrl, 'image/webp');
+              // await uploadToB2({ buffer: thumbBuffer }, thumbUrl, 'image/webp');
             } catch (sharpError) {
               console.error("Error generating thumbnail:", sharpError);
             }
@@ -55,7 +55,7 @@ export const handleUpload = async (req, res) => {
                 const thumbExt = path.extname(generatedThumbName);
                 const thumbFilename = `${thumbHash}${thumbExt}`;
                 thumbUrl = `${chatPath}/thumbs/${thumbFilename}`;
-                await uploadToB2({ path: destination }, thumbUrl, 'image/webp');
+                // await uploadToB2({ path: destination }, thumbUrl, 'image/webp');
                 fs.unlinkSync(destination);
               }
             } catch (ffmpegError) {
