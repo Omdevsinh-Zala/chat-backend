@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import logger from "../config/logger.js";
 import * as LoginService from "../services/authService.js";
-import { b2AuthToken, b2ProfileToken, generateToken } from "../services/tokenService.js";
+// import { b2AuthToken, b2ProfileToken, generateToken } from "../services/tokenService.js";
 import { sequelize } from "../models/index.js";
 import { config } from "../config/app.js";
 import AppError from "../utils/appError.js";
@@ -65,8 +65,8 @@ export const refreshToken = async (req, res, next) => {
             maxAge: 1000 * 60 * 15
         });
 
-        const token = await b2AuthToken('', 60 * 60);
-        const refreshToken = await b2ProfileToken(60 * 60);
+        // const token = await b2AuthToken('', 60 * 60);
+        // const refreshToken = await b2ProfileToken(60 * 60);
 
         return successResponse({ res, data: { token, refreshToken }, message: null, statusCode: 200 });
     });

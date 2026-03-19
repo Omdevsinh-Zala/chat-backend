@@ -5,7 +5,7 @@ import cookie from 'cookie';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/app.js';
 import logger from '../config/logger.js';
-import { b2AuthToken } from '../services/tokenService.js'
+// import { b2AuthToken } from '../services/tokenService.js'
 
 export const setupSocketHandlers = (socketIO) => {
   socketIO.on('connection', async (socket) => {
@@ -226,7 +226,7 @@ export const setupSocketHandlers = (socketIO) => {
       socketIO.to(socket.user.id).emit('channelChatMessages', {
         chat: await ChannelSocketService.getChannelChatMessages(senderId, channelId, null),
         channelData: await ChannelSocketService.getChannelData(channelId),
-        b2AuthToken: await b2AuthToken(`channels/${channelId}`, remainingTime),
+        // b2AuthToken: await b2AuthToken(`channels/${channelId}`, remainingTime),
       });
     });
 
@@ -281,7 +281,7 @@ export const setupSocketHandlers = (socketIO) => {
       socketIO.to(socket.user.id).emit('chatMessages', {
         chat: await SocketService.getChatMessages(receiverId, senderId, null),
         receiverData: await SocketService.getReceiverData(receiverId),
-        b2AuthToken: await b2AuthToken(userPath, remainingTime),
+        // b2AuthToken: await b2AuthToken(userPath, remainingTime),
       });
     });
 

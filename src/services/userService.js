@@ -7,10 +7,11 @@ import { config } from "../config/app.js";
 import { Attachment } from "../models/initModels.js";
 import logger from "../config/logger.js";
 import { randomImage } from "../utils/profileImagePicker.js";
-import { removeFromB2, uploadToB2 } from "./b2Upload.js";
+// import { removeFromB2, uploadToB2 } from "./b2Upload.js";
 import { generateHash } from "../utils/fileHash.js";
 
-export const getUserData = async (id, b2Token, profileToken) => {
+// export const getUserData = async (id, b2Token, profileToken) => {
+export const getUserData = async (id) => {
   try {
     const rawData = await User.findByPk(id);
     if (!rawData) throw new AppError("User not found.", 404);
@@ -20,8 +21,8 @@ export const getUserData = async (id, b2Token, profileToken) => {
       throw new AppError("Your account has been blocked. Please contact support.", 403);
     }
 
-    userData.token = b2Token;
-    userData.profileToken = profileToken;
+    // userData.token = b2Token;
+    // userData.profileToken = profileToken;
 
     return userData;
   } catch (err) {
@@ -77,14 +78,14 @@ export const uploadProfileImage = async (id, files) => {
   const hash = await generateHash({ buffer });
   const ext = path.extname(originalname);
   const filename = `${hash}${ext}.webp`;
-  await uploadToB2({ buffer }, `profileImages/${filename}`, mimetype);
+  // await uploadToB2({ buffer }, `profileImages/${filename}`, mimetype);
   const user = await User.findByPk(id);
   const previousImage = user.avatar_url;
   user.set({ avatar_url: filename });
   await user.save();
 
   if (previousImage) {
-    await removeFromB2(previousImage);
+    // await removeFromB2(previousImage);
   }
 
   return user.toJSON();

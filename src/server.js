@@ -5,7 +5,7 @@ import logger from "./config/logger.js";
 
 console.log("Starting server.js..."); // Raw console log for debugging
 
-import { b2 } from "./config/b2.js";
+// import { b2 } from "./config/b2.js";
 
 process.on("uncaughtException", (error) => {
   logger.error("UNCAUGHT EXCEPTION! Shutting down...");
@@ -44,7 +44,7 @@ process.on("SIGINT", () => {
 
 try {
   await sequelize.authenticate();
-  await b2.authorize();
+  // await b2.authorize();
   app = server.listen(config.port || 5002, () => {
     logger.info(`Server running in ${config.env} on port ${config.port}`);
   });
