@@ -2,6 +2,9 @@ import server from "./app.js";
 import { sequelize } from "./models/index.js";
 import { config } from "./config/app.js";
 import logger from "./config/logger.js";
+
+console.log("Starting server.js..."); // Raw console log for debugging
+
 import { b2 } from "./config/b2.js";
 
 process.on("uncaughtException", (error) => {
@@ -14,6 +17,7 @@ process.on("uncaughtException", (error) => {
 let app;
 
 process.on("unhandledRejection", (error) => {
+  console.log(error)
   logger.error("UNHANDLED REJECTION! Shutting down...");
   logger.error(error.name, error.message, error.stack);
 
@@ -45,6 +49,9 @@ try {
     logger.info(`Server running in ${config.env} on port ${config.port}`);
   });
 } catch (error) {
+  console.log(error)
+  console.error("CRITICAL ERROR STARTING SERVER:", error); // Raw console error
   logger.error("Error connecting to database:", error.message);
   logger.error(error.stack);
+  process.exit(1);
 }

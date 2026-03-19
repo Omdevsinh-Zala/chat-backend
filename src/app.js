@@ -61,6 +61,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/public', express.static("public"));
 
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
+
+
 app.use('/api/v1/auth', router);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/upload', uploadRouter);

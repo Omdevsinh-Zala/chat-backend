@@ -1,7 +1,6 @@
 import dotenv from 'dotenv';
-import { resolve } from 'path';
 
-dotenv.config({ path: resolve(import.meta.dirname, '../../', '.env') });
+dotenv.config();
 
 export const config = {
     port: process.env.PORT,
@@ -27,7 +26,7 @@ export const config = {
             expire: process.env.REFRESH_TOKEN_EXPIRE,
         }
     },
-    origins: process.env.WEB_DOMAIN.split(',').map((domain) => domain.trim()),
+    origins: (process.env.WEB_DOMAIN || '').split(',').map((domain) => domain.trim()),
     pagination: {
         limit: parseInt(process.env.PAGINATION_LIMIT, 10),
         offset: parseInt(process.env.PAGINATION_OFFSET, 10),
